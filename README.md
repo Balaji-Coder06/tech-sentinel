@@ -1,129 +1,94 @@
 # 🛡️ Tech Sentinel
 
-> **Never miss what matters in tech.**  
-> *Personal technology intelligence platform & "Free Before It's Gone" opportunity radar operating at ₹0 cost.*
+> **Autonomous personal technology intelligence platform & "Free Before It's Gone" opportunity radar.**
+
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.10-blue?logo=python)](https://python.org/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20%26%20D1-orange?logo=cloudflare)](https://workers.cloudflare.com/)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-Automated-2088FF?logo=github-actions)](https://github.com/features/actions)
 
 ---
 
-## ⚡ Overview
+## ⚡ What is Tech Sentinel?
 
-**Tech Sentinel** is an autonomous technology intelligence platform designed for developers and students. It continuously monitors hundreds of sources—engineering blogs, developer communities, GitHub repositories, cloud providers, and official platforms—to extract breaking updates and, most importantly, **discover free technology opportunities before they expire**.
+Tech Sentinel is an autonomous technology intelligence system built for developers and students. It continuously monitors engineering feeds, developer communities, trending GitHub repositories, and official cloud provider registries to:
 
-Every night at **9:00 PM IST**, Sentinel synthesizes everything collected into a crisp, personalized **Daily Intelligence Digest** delivered via web and Telegram.
-
----
-
-## 🎁 The Signature Feature: FREE BEFORE IT'S GONE
-
-Unlike conventional news aggregators, Tech Sentinel's core differentiator is **active opportunity detection**:
-
-- 💳 **Free Cloud Credits**: AWS, Google Cloud, Azure vouchers & activate credits.
-- 🤖 **Developer Credits & Sandbox Tiers**: Free developer tiers, cloud instances, and database clusters.
-- 🎓 **Student Packs & Certifications**: Microsoft exam vouchers, GitHub Student Pack benefits.
-- 💻 **Free Software & SaaS**: IDE features, database clusters, serverless tiers.
-- 🏆 **Hackathons & Internships**: High-reward competitions and developer challenges.
-
-Every offer includes **expiration tracking** (🟢 Available, 🟠 Ends Soon, 🔴 Expires Today) and **official source verification** (preventing misleading secondary claims).
+- **Track Breaking Tech Intelligence**: Aggregates, deduplicates, classifies, and synthesizes technical developments with structured heuristic insights (*What happened*, *Why it matters*, *What you can do*).
+- **Surface "Free Before It's Gone" Opportunities**: Actively detects, parses, and verifies free cloud credits, 100% discount vouchers, developer tiers, student perks, and hackathons with expiration tracking.
+- **Deliver Automated Daily Briefings**: Synthesizes a daily intelligence digest delivered via an editorial web application, serverless Telegram bot, and email newsletter.
 
 ---
 
-## 🏛️ Production Architecture & Single Source of Truth
+## 🏛️ System Architecture
 
 ```text
-                  🌐 THE INTERNET
-                         │
-        ┌────────────────┼────────────────┐
-        ↓                ↓                ↓
-    RSS Feeds     GitHub Trending   Official APIs
-        │                │                │
-        └────────────────┼────────────────┘
-                         ↓
-             🐍 PYTHON AGENT (GitHub Actions)
-                         │
-            ┌────────────┼────────────┐
-            ↓            ↓            ↓
-        Classifier  Deduplicator   Opportunity
-                                    Detector
-            │            │            │
-            └────────────┼────────────┘
-                         ↓
-          ⚡ DETERMINISTIC ENGINE (₹0)
-         Local Offline Heuristic NLP
-                         │
-                         ↓
-             🔐 POST /api/ingest (Auth Token)
-                         ↓
-                ☁️ CLOUDFLARE D1
-                         │
-            ┌────────────┴────────────┐
-            ↓                         ↓
-    ⚡ EDGE WORKER API         ▲ NEXT.JS WEB APP ▲
-       (/api/news, /api/opps)     (Editorial UI)
-            │                         │
-            └────────────┬────────────┘
-                         ↓
-                  🌙 NIGHTLY REPORT
-                         ↓
-                  📱 Telegram Bot
+  🌐 Data Sources (RSS, GitHub Trending, Official Registries)
+                            │
+                            ▼
+     🐍 Python Agent Pipeline (GitHub Actions / Scheduled)
+     ┌──────────────────────────────────────────────────┐
+     │  1. Ingestion & Raw Staging                      │
+     │  2. Deduplication & Taxonomy Classification      │
+     │  3. Opportunity Detection & Verification         │
+     │  4. Deterministic NLP Summarization & Scoring    │
+     │  5. Nightly Digest Synthesis                     │
+     └──────────────────────┬───────────────────────────┘
+                            │  POST /api/ingest (Auth Token)
+                            ▼
+                ☁️ Cloudflare D1 (Edge SQL)
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+   ⚡ Cloudflare Worker API       ▲ Next.js Web App
+   (REST Endpoints & Webhook)   (Editorial Dashboard)
+              │                           │
+              ├───────────────────────────┤
+              ▼                           ▼
+     📱 Telegram Bot             📧 Email Newsletter
+     (Webhook & Unified Dispatch)   (SMTP / Gmail)
 ```
 
 ---
 
-## 💻 Tech Stack & Zero-Cost Blueprint
+## 🛠️ Tech Stack
 
-Designed to run at **strict ₹0 infrastructure cost** utilizing free tiers and open-source tooling:
-
-| Component | Technology | Cost |
-|---|---|---:|
-| **Frontend UI** | Next.js 14 + TypeScript + Tailwind CSS | ₹0 |
-| **Design System** | GoRead Editorial Theme (#FF5A36 Coral) | ₹0 |
-| **Agent Pipeline** | Python 3.10 (httpx, feedparser, BeautifulSoup, Pydantic) | ₹0 |
-| **Intelligence Engine**| Deterministic Local Heuristic NLP | ₹0 |
-| **Database** | Cloudflare D1 / Local SQLite | ₹0 |
-| **Edge API** | Cloudflare Workers | ₹0 |
-| **Scheduler** | GitHub Actions (Every 2 hours & Nightly 9 PM IST) | ₹0 |
-| **Notifications** | Telegram Bot API | ₹0 |
+| Layer | Technologies |
+|---|---|
+| **Web Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS, Lucide Icons |
+| **Edge API & Database** | Cloudflare Workers (TypeScript), Cloudflare D1 (Serverless SQLite) |
+| **Agent Engine** | Python 3.10+, `httpx`, `feedparser`, `beautifulsoup4`, `pydantic`, `scikit-learn` |
+| **NLP Engine** | Local Deterministic Heuristic Engine (zero API costs, offline capable) |
+| **Automation** | GitHub Actions (`collect.yml` every 2h, `nightly-report.yml` nightly at 9:30 PM IST) |
+| **Delivery Channels** | Telegram Bot (Serverless Webhook + Polling), SMTP / Gmail Newsletter |
 
 ---
 
-## 📁 Repository Structure
+## 📂 Repository Structure
 
 ```text
 tech-sentinel/
-├── agent/                    # 🐍 Python Intelligence Agent
-│   ├── ai/                   # Local deterministic engine & summarizer
-│   ├── collectors/           # Multi-source ingestion (RSS, GitHub, Official)
-│   ├── notifications/        # Telegram Bot HTML integration
+├── agent/                    # Python Intelligence Agent
+│   ├── ai/                   # Local deterministic summarizer & digest generator
+│   ├── collectors/           # Feed ingestion (RSS, GitHub Trending, Official Registries)
+│   ├── dispatch/             # Unified multi-channel idempotent delivery dispatcher
+│   ├── notifications/        # Telegram & SMTP email notification handlers
 │   ├── processors/           # Classifier, Deduplicator, Opportunity Detector, Verifier, Scorer
-│   ├── storage/              # SQLite repository & Cloudflare D1 Sync client
-│   ├── config.py             # Agent settings & environment loader
-│   ├── models.py             # Pydantic data schemas
-│   └── main.py               # CLI runner with clean subcommands
-│
+│   ├── storage/              # SQLite repository & Cloudflare D1 sync client
+│   ├── telegram/             # Telegram service & digest builder
+│   └── main.py               # CLI entrypoint for all agent workflows
 ├── apps/
-│   └── web/                  # ▲ Next.js Editorial Web Application
-│       ├── app/              # App Router (Home, News, Free, Reports, Saved, Settings, API)
-│       ├── components/       # Editorial UI Components & Modals
-│       ├── lib/              # Types, API Client, Database bridge, Utilities
-│       └── styles/           # Tailwind CSS tokens & Editorial typography
-│
-├── database/                 # 🗄️ Database Schemas & Seeds
-│   ├── schema.sql            # Cloudflare D1 / SQLite DDL schema with unique constraints
-│   └── seed.sql              # Rich initial seed dataset & system status
-│
-├── workers/                  # ⚡ Cloudflare Workers Edge API
-│   └── api/                  # Edge route handlers (/api/ingest, /api/news, /api/stats, etc.)
-│
-├── .github/
-│   └── workflows/            # ⚙️ GitHub Actions Automation
-│       ├── collect.yml       # Continuous scan every 2 hours
-│       └── nightly-report.yml# Nightly digest generator at 9 PM IST
-│
-├── source/                   # 📄 Product specifications & design docs
+│   └── web/                  # Next.js Editorial Web Application
+│       ├── app/              # App Router pages (Home, News, Free Radar, Reports, Saved, Settings)
+│       ├── components/       # Editorial UI components and modals
+│       └── lib/              # API clients, types, and utilities
+├── database/
+│   ├── schema.sql            # Cloudflare D1 / SQLite 11-table DDL schema
+│   └── seed.sql              # Initial seed dataset & system status
+├── workers/
+│   └── api/                  # Cloudflare Worker REST API & Telegram webhook handler
+├── .github/workflows/        # Automation workflows for ingestion and nightly dispatch
+├── pyproject.toml            # Python packaging configuration
 ├── requirements.txt          # Python dependencies
-├── pyproject.toml            # Python packaging config
-├── wrangler.toml             # Cloudflare Workers/D1 deployment config
-└── README.md
+└── wrangler.toml             # Cloudflare Workers & D1 configuration
 ```
 
 ---
@@ -138,7 +103,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to explore the editorial dashboard.
+Open [http://localhost:3000](http://localhost:3000) to view the editorial interface.
 
 ### 2. Python Agent Pipeline
 
@@ -146,126 +111,95 @@ Open [http://localhost:3000](http://localhost:3000) to explore the editorial das
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Run complete intelligence cycle (Collect -> Deduplicate -> Detect -> Score -> Report -> Sync)
+# Run complete autonomous intelligence cycle:
 python -m agent.main run-all
 
-# Or run individual stages:
-python -m agent.main collect   # Fetch latest feeds from all sources
-python -m agent.main process   # Run classification & opportunity detection
-python -m agent.main report    # Synthesize nightly intelligence report
-python -m agent.main notify    # Dispatch Telegram brief
+# Or run discrete pipeline stages:
+python -m agent.main collect    # Ingest raw items from all sources to staging
+python -m agent.main process    # Deduplicate, classify, detect opportunities, score, sync
+python -m agent.main report     # Synthesize nightly intelligence digest
+python -m agent.main dispatch   # Deliver nightly briefing to Telegram & Email
+python -m agent.main telegram info  # Verify Telegram bot configuration
 ```
 
 ---
 
-## ⚙️ Environment Variables
+## ⚙️ Configuration
 
 Create a `.env` file based on `.env.example`:
 
 ```env
+# Telegram Bot
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
-APP_BASE_URL=http://localhost:3000
 
-# Cloudflare D1 Ingestion Bridge (for GitHub Actions)
+# Optional Email Newsletter (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+EMAIL_FROM=your_email@gmail.com
+
+# Web App URLs
+APP_BASE_URL=https://tech-sentinel-chi.vercel.app
+WEB_APP_URL=https://tech-sentinel-chi.vercel.app
+
+# Database & Cloudflare D1 Ingestion Bridge
+DATABASE_PATH=database/tech_sentinel.db
 WORKER_API_URL=https://tech-sentinel-api.your-subdomain.workers.dev
-INGESTION_SECRET=your_super_secret_token
+INGESTION_SECRET=your_secret_ingestion_token
 ```
 
 ---
 
-## 🌐 Deploying to Cloudflare at ₹0 Cost
+## ☁️ Deployment & Edge Setup
 
-1. **Deploy Database (D1)**:
-   ```bash
-   npx wrangler d1 create tech-sentinel-db
-   # Copy the generated database_id into wrangler.toml
-   npx wrangler d1 execute tech-sentinel-db --file=database/schema.sql
-   npx wrangler d1 execute tech-sentinel-db --file=database/seed.sql
-   ```
+### Cloudflare D1 & Worker API
 
-2. **Configure Worker Secrets & Deploy Edge API (Cloudflare Workers)**:
-   ```bash
-   npx wrangler secret put INGESTION_SECRET
-   npx wrangler secret put TELEGRAM_BOT_TOKEN
-   # Optional webhook secret token for header validation
-   npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
-   npx wrangler deploy
-   ```
+```bash
+# 1. Create and initialize D1 database
+npx wrangler d1 create tech-sentinel-db
+# Add database_id to wrangler.toml, then apply schemas:
+npx wrangler d1 execute tech-sentinel-db --file=database/schema.sql
+npx wrangler d1 execute tech-sentinel-db --file=database/seed.sql
 
-3. **Deploy Next.js Web App (Cloudflare Pages / Vercel)**:
-   ```bash
-   cd apps/web
-   npx @cloudflare/next-on-pages
-   ```
+# 2. Configure secrets and deploy Edge Worker API
+npx wrangler secret put INGESTION_SECRET
+npx wrangler secret put TELEGRAM_BOT_TOKEN
+npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
+npx wrangler deploy
+```
 
-4. **Configure GitHub Actions Secrets**:
-   In your GitHub repository settings, add:
-   - `WORKER_API_URL`: URL of your deployed Cloudflare Worker (`https://tech-sentinel-api.sbalaji06.workers.dev`)
-   - `INGESTION_SECRET`: Same secret configured in Cloudflare Workers
-   - `TELEGRAM_BOT_TOKEN`: Your Telegram Bot API token
+### Telegram Bot Serverless Webhook
 
----
+Set up the Cloudflare Worker as your live Telegram webhook:
 
-## 📱 Telegram Bot Webhook Architecture
-
-Tech Sentinel implements a **100% serverless, zero-polling** Telegram Bot webhook handler directly inside the Cloudflare Worker Edge API (`POST /api/telegram/webhook`).
-
-### 🤖 Supported Commands
-
-| Command | Action | Behavior |
-|---|---|---|
-| `/start` | Welcome & Auto-Register | Upserts user in Cloudflare D1 and enables daily digest (`telegram_digest_enabled = 1`) |
-| `/subscribe` | Enable Digest | Subscribes user to daily 8:00 PM IST personalized intelligence briefing |
-| `/unsubscribe` | Disable Digest | Opts out of daily briefings (can be resumed anytime) |
-| `/status` | Subscription Status | Reports current digest subscription state (`🟢 Subscribed` or `🔴 Not Subscribed`) |
-| `/help` | Command Menu | Displays complete command reference and dashboard links |
-| `/news` | Intelligence Feed | Returns top 5 curated stories directly from D1 with direct links & inline buttons |
-| `/opportunities` | Free Radar | Returns top 5 verified cloud credits & vouchers with claim URLs |
-| `/latest` | Live Stream | Chronological stream of latest intelligence across all domains |
-
-### 🚀 Production Webhook Registration
-
-To connect your Telegram Bot to the production Cloudflare Worker webhook:
-
-#### 1. Register Webhook with Telegram Bot API
 ```bash
 curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://tech-sentinel-api.sbalaji06.workers.dev/api/telegram/webhook",
+    "url": "https://<your-worker-subdomain>.workers.dev/api/telegram/webhook",
     "secret_token": "<TELEGRAM_WEBHOOK_SECRET>",
     "allowed_updates": ["message", "edited_message", "callback_query"],
     "drop_pending_updates": true
   }'
 ```
 
-#### 2. Verify Webhook Status & Latency
-```bash
-curl -s "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
-```
+#### Supported Telegram Commands
 
-Expected response:
-```json
-{
-  "ok": true,
-  "result": {
-    "url": "https://tech-sentinel-api.sbalaji06.workers.dev/api/telegram/webhook",
-    "has_custom_certificate": false,
-    "pending_update_count": 0,
-    "max_connections": 40,
-    "ip_address": "..."
-  }
-}
-```
-
-#### 3. Reset or Delete Webhook (if switching back to local polling)
-```bash
-curl -s "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/deleteWebhook"
-```
+| Command | Action |
+|---|---|
+| `/start` | Auto-register in D1 and enable daily intelligence digest |
+| `/news` | Top curated stories ranked by importance score |
+| `/opportunities` | Active Free Radar credits, vouchers, and claim links |
+| `/latest` | Real-time chronological dispatch stream |
+| `/status` | View current subscription and delivery preferences |
+| `/subscribe` | Opt-in to daily 8:00 PM IST briefing |
+| `/unsubscribe` | Pause automated daily briefings |
+| `/help` | Complete command reference and dashboard links |
 
 ---
 
-## 🛡️ License
+## 📄 License
 
-MIT License. Designed with precision for developers who want to stay ahead of the technology curve.
+This project is licensed under the MIT License.
