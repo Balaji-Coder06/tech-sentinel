@@ -28,8 +28,19 @@ export default function SettingsPage() {
     async function loadPrefs() {
       try {
         const data = await fetchPreferences();
-        if (data && data.categories) {
-          setPrefs(data);
+        if (data && (data.categories || data.id)) {
+          setPrefs({
+            id: data.id || 'default',
+            user_name: data.user_name || 'Balaji',
+            theme: data.theme || 'system',
+            categories: Array.isArray(data.categories) ? data.categories : ['ai', 'cloud', 'development', 'open_source', 'cybersecurity', 'startups'],
+            keywords: Array.isArray(data.keywords) ? data.keywords : [],
+            opportunity_types: Array.isArray(data.opportunity_types) ? data.opportunity_types : ['software', 'ai_credits', 'cloud', 'education', 'certification', 'competition', 'career'],
+            enable_daily_brief: data.enable_daily_brief !== undefined ? Boolean(data.enable_daily_brief) : true,
+            enable_critical_alerts: data.enable_critical_alerts !== undefined ? Boolean(data.enable_critical_alerts) : true,
+            email_newsletter_enabled: Boolean(data.email_newsletter_enabled),
+            newsletter_email: data.newsletter_email || ''
+          });
         }
       } catch (err) {
         console.warn('Failed to load preferences:', err);
@@ -80,9 +91,19 @@ export default function SettingsPage() {
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      const updated = await savePreferences(prefs);
-      if (updated && updated.categories) {
-        setPrefs(updated);
+      const payload: UserPreferences = {
+        ...prefs,
+        email_newsletter_enabled: Boolean(prefs.email_newsletter_enabled),
+        newsletter_email: prefs.email_newsletter_enabled ? (prefs.newsletter_email || '').trim() : ''
+      };
+      const updated = await savePreferences(payload);
+      if (updated && (updated.categories || updated.id)) {
+        setPrefs(prev => ({
+          ...prev,
+          ...updated,
+          email_newsletter_enabled: Boolean(updated.email_newsletter_enabled),
+          newsletter_email: updated.newsletter_email || ''
+        }));
       }
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);

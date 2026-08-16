@@ -704,9 +704,11 @@ export default {
 
         if (request.method === 'POST') {
           const body = await request.json() as any;
-          const categories = JSON.stringify(body.categories || []);
-          const keywords = JSON.stringify(body.keywords || []);
-          const opportunityTypes = JSON.stringify(body.opportunity_types || []);
+          const categories = typeof body.categories === 'string' ? body.categories : JSON.stringify(body.categories || []);
+          const keywords = typeof body.keywords === 'string' ? body.keywords : JSON.stringify(body.keywords || []);
+          const opportunityTypes = typeof body.opportunity_types === 'string' ? body.opportunity_types : JSON.stringify(body.opportunity_types || []);
+          const emailNewsletterEnabled = body.email_newsletter_enabled ? 1 : 0;
+          const newsletterEmail = body.newsletter_email && String(body.newsletter_email).trim() ? String(body.newsletter_email).trim() : null;
 
           await env.DB.prepare(`
             INSERT INTO preferences (
@@ -732,9 +734,26 @@ export default {
             opportunityTypes,
             body.enable_daily_brief ? 1 : 0,
             body.enable_critical_alerts ? 1 : 0,
-            body.email_newsletter_enabled ? 1 : 0,
-            body.newsletter_email || null
+            emailNewsletterEnabled,
+            newsletterEmail
           ).run();
+
+          const savedRow: any = await env.DB.prepare("SELECT * FROM preferences WHERE id = 'default'").first();
+          if (savedRow) {
+            return new Response(JSON.stringify({
+              success: true,
+              data: {
+                ...savedRow,
+                categories: JSON.parse(savedRow.categories || '[]'),
+                keywords: JSON.parse(savedRow.keywords || '[]'),
+                opportunity_types: JSON.parse(savedRow.opportunity_types || '[]'),
+                enable_daily_brief: Boolean(savedRow.enable_daily_brief),
+                enable_critical_alerts: Boolean(savedRow.enable_critical_alerts),
+                email_newsletter_enabled: Boolean(savedRow.email_newsletter_enabled),
+                newsletter_email: savedRow.newsletter_email || null
+              }
+            }), { headers });
+          }
 
           return new Response(JSON.stringify({ success: true, data: body }), { headers });
         }
