@@ -7,8 +7,18 @@ import { MobileNav } from '../components/MobileNav';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Tech Sentinel — Never Miss What Matters in Tech',
+  title: 'Tech Sentinel',
   description: 'Personal AI-powered technology intelligence agent and free opportunity radar.',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({

@@ -283,7 +283,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="email"
-                      placeholder="e.g. balaji@example.com"
+                      placeholder="e.g. yourname@domain.com"
                       value={prefs.newsletter_email || ''}
                       onChange={(e) => setPrefs({ ...prefs, newsletter_email: e.target.value })}
                       className="w-full px-3.5 py-2 text-xs rounded-xl bg-sentinel-bg border border-sentinel-border text-sentinel-text focus:outline-none focus:border-sentinel-accent transition-colors"

@@ -81,7 +81,7 @@ class TestUnifiedDispatcher(unittest.TestCase):
         self.db.update_preferences({
             "id": "default",
             "email_newsletter_enabled": True,
-            "newsletter_email": "balaji@example.com"
+            "newsletter_email": "test_subscriber@domain.com"
         })
 
         dispatcher = UnifiedDispatcher(db=self.db, d1_client=self.d1_client)

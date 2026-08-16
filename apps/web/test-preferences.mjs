@@ -92,14 +92,14 @@ function updatePreferences(prefs) {
     enable_daily_brief: true,
     enable_critical_alerts: true,
     email_newsletter_enabled: true,
-    newsletter_email: 'balaji@example.com'
+    newsletter_email: 'test-subscriber@test-domain.dev'
   });
 
   assert.equal(updated.user_name, 'Balaji Coder');
   assert.deepEqual(updated.categories, ['ai']);
   assert.deepEqual(updated.opportunity_types, ['ai_credits', 'certification']);
   assert.equal(updated.email_newsletter_enabled, true);
-  assert.equal(updated.newsletter_email, 'balaji@example.com');
+  assert.equal(updated.newsletter_email, 'test-subscriber@test-domain.dev');
 
   // Verify persistence by reading directly from SQLite with a new DB connection
   const directDb = new DatabaseSync('../../database/tech_sentinel.db');
@@ -108,7 +108,7 @@ function updatePreferences(prefs) {
   assert.deepEqual(JSON.parse(row.categories), ['ai']);
   assert.deepEqual(JSON.parse(row.opportunity_types), ['ai_credits', 'certification']);
   assert.equal(Boolean(row.email_newsletter_enabled), true);
-  assert.equal(row.newsletter_email, 'balaji@example.com');
+  assert.equal(row.newsletter_email, 'test-subscriber@test-domain.dev');
 
   console.log('✅ Test 2 Passed: Preferences including email newsletter persisted and verified in SQLite database.');
 }
@@ -178,7 +178,7 @@ function updatePreferences(prefs) {
 }
 
 // -------------------------------------------------------------
-// Test 6: Restore Default Balanced Preferences
+// Test 6: Restore Default Balanced Preferences & Zero Hardcoded Emails
 // -------------------------------------------------------------
 {
   const restored = updatePreferences({
@@ -188,11 +188,21 @@ function updatePreferences(prefs) {
     keywords: [],
     opportunity_types: ['ai_credits', 'cloud', 'certification', 'software', 'competition', 'education', 'career'],
     enable_daily_brief: true,
-    enable_critical_alerts: true
+    enable_critical_alerts: true,
+    email_newsletter_enabled: false,
+    newsletter_email: null
   });
 
   assert.equal(restored.user_name, 'Balaji');
-  console.log('✅ Test 6 Passed: Full default preferences successfully restored and verified.');
+  assert.equal(restored.email_newsletter_enabled, false);
+  assert.equal(restored.newsletter_email, '');
+
+  const directDb = new DatabaseSync('../../database/tech_sentinel.db');
+  const row = directDb.prepare("SELECT * FROM preferences WHERE id = 'default'").get();
+  assert.equal(Boolean(row.email_newsletter_enabled), false);
+  assert.equal(row.newsletter_email, null);
+
+  console.log('✅ Test 6 Passed: Full default preferences successfully restored and verified with zero hardcoded emails.');
 }
 
 console.log('\n🎉 ALL PREFERENCES & PERSONALIZATION TESTS PASSED PERFECTLY!\n');
