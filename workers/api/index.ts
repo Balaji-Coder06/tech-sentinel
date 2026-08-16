@@ -9,6 +9,43 @@ export interface Env {
   ENVIRONMENT: string;
   CORS_ORIGIN?: string;
   INGESTION_SECRET?: string;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  WEB_APP_URL?: string;
+}
+
+function escapeHtml(str?: string | null): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function isValidTelegramButtonUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const clean = url.trim().toLowerCase();
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) return false;
+  const blocked = ['localhost', '127.0.0.1', '0.0.0.0', '::1', 'local.test'];
+  return !blocked.some((b) => clean.includes(b));
+}
+
+function formatTimeAgo(isoDate?: string | null): string {
+  if (!isoDate) return 'recently';
+  try {
+    const dt = new Date(isoDate);
+    if (isNaN(dt.getTime())) return 'recently';
+    const now = new Date();
+    const diffSec = Math.max(0, Math.floor((now.getTime() - dt.getTime()) / 1000));
+    if (diffSec < 60) return 'just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return 'recently';
+  }
 }
 
 async function ensureSchema(db?: D1Database): Promise<void> {
@@ -48,6 +85,23 @@ async function ensureSchema(db?: D1Database): Promise<void> {
         delivered_at TEXT NOT NULL DEFAULT (datetime('now')),
         metadata TEXT,
         UNIQUE(report_date, channel, recipient_id)
+      );
+    `);
+  } catch (err) {}
+
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS telegram_users (
+        user_id TEXT PRIMARY KEY,
+        chat_id TEXT NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        preference_id TEXT NOT NULL DEFAULT 'default',
+        telegram_digest_enabled INTEGER DEFAULT 0,
+        last_digest_sent_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
       );
     `);
   } catch (err) {}
@@ -498,6 +552,507 @@ export default {
           count: subscribers.length,
           data: subscribers
         }), { headers });
+      }
+
+      // -------------------------------------------------------------
+      // 0d. TELEGRAM BOT WEBHOOK ENDPOINT: POST & GET /api/telegram/webhook
+      // -------------------------------------------------------------
+      if (path === '/api/telegram/webhook' || path === '/api/telegram/webhook/') {
+        if (request.method === 'GET') {
+          return new Response(JSON.stringify({
+            status: 'online',
+            endpoint: '/api/telegram/webhook',
+            service: 'Tech Sentinel Telegram Bot Webhook API',
+            timestamp: new Date().toISOString()
+          }), { headers });
+        }
+
+        if (request.method === 'POST') {
+          // 1. Security check: validate secret token header if configured
+          if (env.TELEGRAM_WEBHOOK_SECRET) {
+            const secretHeader = request.headers.get('X-Telegram-Bot-Api-Secret-Token') || '';
+            if (secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+              return new Response(JSON.stringify({ error: 'Unauthorized: Invalid Telegram Webhook Secret' }), {
+                status: 401,
+                headers
+              });
+            }
+          }
+
+          let update: any = {};
+          try {
+            update = await request.json();
+          } catch (e) {
+            return new Response(JSON.stringify({ ok: true, note: 'Empty or invalid JSON body' }), { headers });
+          }
+
+          const message = update.message || update.edited_message || update.channel_post || update.callback_query?.message;
+          if (!message) {
+            return new Response(JSON.stringify({ ok: true }), { headers });
+          }
+
+          const fromUser = update.callback_query?.from || message.from || {};
+          const chat = message.chat || {};
+          const chatId = String(chat.id || fromUser.id || '');
+          const userId = String(fromUser.id || chatId);
+          const firstName = fromUser.first_name || chat.first_name || '';
+          const lastName = fromUser.last_name || chat.last_name || '';
+          const username = fromUser.username || chat.username || '';
+          const userDisplayName = firstName || username || 'Developer';
+
+          if (!chatId) {
+            return new Response(JSON.stringify({ ok: true }), { headers });
+          }
+
+          const text = String(message.text || update.callback_query?.data || '').trim();
+          if (!text.startsWith('/')) {
+            const replyText = (
+              `🤖 <b>Tech Sentinel Bot</b>\n\n` +
+              `Send /help to see all available commands, /news for latest stories, or /opportunities for free credits & perks.`
+            );
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: replyText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            }), { headers });
+          }
+
+          const parts = text.split(/\s+/);
+          const cmd = parts[0].toLowerCase().split('@')[0];
+          const arg = parts.slice(1).join(' ').trim().toLowerCase();
+
+          const webAppUrl = (env.WEB_APP_URL || 'https://tech-sentinel-chi.vercel.app').replace(/\/+$/, '');
+          const webLine = `\n🌐 <b>Dashboard:</b> <a href="${webAppUrl}">${webAppUrl}</a>`;
+
+          // Handle /start command: Auto-register user in D1 and enable daily digest
+          if (cmd === '/start') {
+            if (env.DB) {
+              await env.DB.prepare(`
+                INSERT INTO telegram_users (
+                  user_id, chat_id, username, first_name, last_name, preference_id,
+                  telegram_digest_enabled, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'default', 1, datetime('now'), datetime('now'))
+                ON CONFLICT(user_id) DO UPDATE SET
+                  chat_id=excluded.chat_id,
+                  username=COALESCE(excluded.username, telegram_users.username),
+                  first_name=COALESCE(excluded.first_name, telegram_users.first_name),
+                  last_name=COALESCE(excluded.last_name, telegram_users.last_name),
+                  telegram_digest_enabled=1,
+                  updated_at=datetime('now')
+              `).bind(
+                userId, chatId, username || null, firstName || null, lastName || null
+              ).run();
+            }
+
+            const welcomeText = (
+              `⚡ <b>Welcome to Tech Sentinel${userDisplayName ? ` <b>${escapeHtml(userDisplayName)}</b>` : ''}!</b>\n\n` +
+              `Your personal technology intelligence agent and free opportunity radar.\n` +
+              `✅ <b>Daily Digest:</b> Enabled (Daily at 8:00 PM IST)\n\n` +
+              `🔹 <b>Curated Intelligence:</b> Verified AI, Cloud, Dev & Open Source developments\n` +
+              `🔹 <b>Free Radar:</b> Cloud credits (AWS/GCP/Azure), 100% exam vouchers & student perks\n` +
+              `🔹 <b>Nightly Briefs:</b> Fast 30-second daily summaries\n\n` +
+              `<b>Available Commands:</b>\n` +
+              `• /news — Personalized intelligence feed\n` +
+              `• /opportunities — Active Free Radar credits & vouchers\n` +
+              `• /latest — Live chronological stream\n` +
+              `• /status — Check your subscription status\n` +
+              `• /subscribe — Opt-in to daily digest\n` +
+              `• /unsubscribe — Pause daily digest\n` +
+              `• /help — Full command menu` +
+              `${webLine}`
+            );
+
+            const replyMarkup = {
+              inline_keyboard: [
+                [
+                  { text: '📰 Top News', url: `${webAppUrl}/news` },
+                  { text: '🎁 Free Radar', url: `${webAppUrl}/free` }
+                ],
+                [
+                  { text: '⚡ Open Web Dashboard', url: webAppUrl }
+                ]
+              ]
+            };
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: welcomeText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: replyMarkup
+            }), { headers });
+          }
+
+          // Handle /subscribe (or /digest on)
+          if (cmd === '/subscribe' || (cmd === '/digest' && arg === 'on')) {
+            if (env.DB) {
+              await env.DB.prepare(`
+                INSERT INTO telegram_users (
+                  user_id, chat_id, username, first_name, last_name, preference_id,
+                  telegram_digest_enabled, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'default', 1, datetime('now'), datetime('now'))
+                ON CONFLICT(user_id) DO UPDATE SET
+                  chat_id=excluded.chat_id,
+                  username=COALESCE(excluded.username, telegram_users.username),
+                  first_name=COALESCE(excluded.first_name, telegram_users.first_name),
+                  last_name=COALESCE(excluded.last_name, telegram_users.last_name),
+                  telegram_digest_enabled=1,
+                  updated_at=datetime('now')
+              `).bind(
+                userId, chatId, username || null, firstName || null, lastName || null
+              ).run();
+            }
+
+            const subText = (
+              `✅ <b>Daily Digest Subscribed!</b>\n\n` +
+              `You will receive your personalized tech intelligence and free opportunity radar daily at <b>8:00 PM IST</b>.\n\n` +
+              `• Send /news to preview top stories\n` +
+              `• Send /opportunities for active perks\n` +
+              `• Send /status to view your settings\n` +
+              `• Send /unsubscribe anytime to pause`
+            );
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: subText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            }), { headers });
+          }
+
+          // Handle /unsubscribe (or /digest off)
+          if (cmd === '/unsubscribe' || (cmd === '/digest' && arg === 'off')) {
+            if (env.DB) {
+              await env.DB.prepare(`
+                INSERT INTO telegram_users (
+                  user_id, chat_id, username, first_name, last_name, preference_id,
+                  telegram_digest_enabled, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'default', 0, datetime('now'), datetime('now'))
+                ON CONFLICT(user_id) DO UPDATE SET
+                  chat_id=excluded.chat_id,
+                  telegram_digest_enabled=0,
+                  updated_at=datetime('now')
+              `).bind(
+                userId, chatId, username || null, firstName || null, lastName || null
+              ).run();
+            }
+
+            const unsubText = (
+              `🛑 <b>Daily Digest Unsubscribed.</b>\n\n` +
+              `You will no longer receive automated daily 8:00 PM briefings.\n\n` +
+              `You can re-subscribe anytime by sending /subscribe.`
+            );
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: unsubText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            }), { headers });
+          }
+
+          // Handle /status (or /digest with no arg)
+          if (cmd === '/status' || cmd === '/digest') {
+            let isSubscribed = false;
+            if (env.DB) {
+              const userRow: any = await env.DB.prepare(
+                `SELECT * FROM telegram_users WHERE user_id = ? OR chat_id = ? LIMIT 1`
+              ).bind(userId, chatId).first();
+              isSubscribed = Boolean(userRow && (userRow.telegram_digest_enabled === 1 || userRow.telegram_digest_enabled === true));
+            }
+
+            const statusBadge = isSubscribed
+              ? `🟢 <b>Subscribed (Daily at 8:00 PM IST)</b>`
+              : `🔴 <b>Not Subscribed</b>`;
+
+            const statusText = (
+              `🔔 <b>TECH SENTINEL — SUBSCRIPTION STATUS</b>\n\n` +
+              `<b>User:</b> ${escapeHtml(userDisplayName)} (<code>${escapeHtml(userId)}</code>)\n` +
+              `<b>Chat ID:</b> <code>${escapeHtml(chatId)}</code>\n` +
+              `<b>Daily Digest:</b> ${statusBadge}\n\n` +
+              `<b>Manage Subscription:</b>\n` +
+              `• /subscribe — Opt-in to daily 8:00 PM IST briefing\n` +
+              `• /unsubscribe — Opt-out of daily briefing\n` +
+              `• /news — View latest stories\n` +
+              `• /opportunities — View Free Radar perks`
+            );
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: statusText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true
+            }), { headers });
+          }
+
+          // Handle /help
+          if (cmd === '/help') {
+            const helpText = (
+              `🤖 <b>TECH SENTINEL — COMMAND REFERENCE</b>\n\n` +
+              `📡 <b>Intelligence Feeds:</b>\n` +
+              `• /news — Top stories tailored to your interests & ranked by importance\n` +
+              `• /latest — Live chronological stream across all categories\n\n` +
+              `🎁 <b>Free Opportunity Radar:</b>\n` +
+              `• /opportunities — Cloud credits (AWS/GCP/Azure), exam vouchers & student perks\n\n` +
+              `⚙️ <b>Subscription & Settings:</b>\n` +
+              `• /status — Check your current subscription status\n` +
+              `• /subscribe — Opt-in to daily 8:00 PM IST digest\n` +
+              `• /unsubscribe — Opt-out / pause daily digest\n` +
+              `• /start — Replay welcome briefing\n` +
+              `• /help — Display this command menu` +
+              `${webLine}`
+            );
+
+            const replyMarkup = {
+              inline_keyboard: [
+                [
+                  { text: '📰 News Feed', url: `${webAppUrl}/news` },
+                  { text: '🎁 Free Radar', url: `${webAppUrl}/free` }
+                ],
+                [
+                  { text: '⚡ Live Dashboard', url: webAppUrl }
+                ]
+              ]
+            };
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: helpText,
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: replyMarkup
+            }), { headers });
+          }
+
+          // Handle /news
+          if (cmd === '/news') {
+            let newsList: any[] = [];
+            if (env.DB) {
+              const { results } = await env.DB.prepare(
+                `SELECT * FROM news ORDER BY importance_score DESC, published_at DESC LIMIT 5`
+              ).all();
+              newsList = results || [];
+            }
+
+            if (newsList.length === 0) {
+              return new Response(JSON.stringify({
+                method: 'sendMessage',
+                chat_id: chatId,
+                text: `📰 <b>TECH SENTINEL INTELLIGENCE</b>\n\nNo articles currently available in database. Check back shortly!`,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              }), { headers });
+            }
+
+            const lines = [
+              `📰 <b>TECH SENTINEL — TOP INTELLIGENCE</b>`,
+              `<i>Top curated stories ranked by importance</i>\n`
+            ];
+            const buttons: any[] = [];
+
+            newsList.forEach((item: any, idx: number) => {
+              const num = idx + 1;
+              const title = escapeHtml(item.title || 'Untitled');
+              const cat = escapeHtml((item.category || 'tech').toUpperCase());
+              const source = escapeHtml(item.source_name || 'Source');
+              const timeAgo = formatTimeAgo(item.published_at);
+              const summary = item.summary_what || item.description || '';
+              const summaryClean = escapeHtml(summary.length > 140 ? summary.slice(0, 140) + '...' : summary);
+              const url = item.url || '';
+
+              lines.push(`<b>${num}. [${cat}] ${title}</b>`);
+              lines.push(`📍 <i>${source} • ${timeAgo}</i>`);
+              if (summaryClean) {
+                lines.push(`${summaryClean}`);
+              }
+              if (url) {
+                lines.push(`👉 <a href="${escapeHtml(url)}">Read Source Article</a>\n`);
+              } else {
+                lines.push('');
+              }
+
+              if (isValidTelegramButtonUrl(url)) {
+                buttons.push({ text: `👉 Story #${num}`, url: url });
+              }
+            });
+
+            const buttonRows: any[][] = [];
+            for (let i = 0; i < buttons.length; i += 2) {
+              buttonRows.push(buttons.slice(i, i + 2));
+            }
+            buttonRows.push([{ text: '🌐 Open Full News on Web', url: `${webAppUrl}/news` }]);
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: lines.join('\n'),
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: { inline_keyboard: buttonRows }
+            }), { headers });
+          }
+
+          // Handle /opportunities (or /free or /radar)
+          if (cmd === '/opportunities' || cmd === '/free' || cmd === '/radar') {
+            let oppsList: any[] = [];
+            if (env.DB) {
+              const { results } = await env.DB.prepare(
+                `SELECT * FROM opportunities WHERE status = 'ACTIVE' ORDER BY importance_score DESC, is_expiring_soon DESC LIMIT 5`
+              ).all();
+              oppsList = results || [];
+            }
+
+            if (oppsList.length === 0) {
+              return new Response(JSON.stringify({
+                method: 'sendMessage',
+                chat_id: chatId,
+                text: `🎁 <b>FREE OPPORTUNITY RADAR</b>\n\nNo active opportunities currently tracked in database.`,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              }), { headers });
+            }
+
+            const lines = [
+              `🎁 <b>TECH SENTINEL — FREE OPPORTUNITY RADAR</b>`,
+              `<i>Verified cloud credits, cert vouchers & developer free tiers</i>\n`
+            ];
+            const buttons: any[] = [];
+
+            oppsList.forEach((opp: any, idx: number) => {
+              const num = idx + 1;
+              const title = escapeHtml(opp.title || 'Opportunity');
+              const provider = escapeHtml(opp.provider || 'Provider');
+              const value = escapeHtml(String(opp.normal_value || opp.current_value || 'FREE'));
+              const eligibility = escapeHtml(opp.eligibility || 'All Developers');
+              const whyCare = opp.why_care || opp.description || '';
+              const whyClean = escapeHtml(whyCare.length > 120 ? whyCare.slice(0, 120) + '...' : whyCare);
+              const claimUrl = opp.claim_url || opp.official_url || '';
+
+              lines.push(`<b>${num}. ${title}</b>`);
+              lines.push(`🏢 <b>Provider:</b> ${provider} | 💵 <b>Value:</b> <code>${value}</code>`);
+              lines.push(`🎯 <b>Eligibility:</b> ${eligibility}`);
+              if (whyClean) {
+                lines.push(`💡 ${whyClean}`);
+              }
+              if (claimUrl) {
+                lines.push(`🔗 <a href="${escapeHtml(claimUrl)}">Claim Offer</a>\n`);
+              } else {
+                lines.push('');
+              }
+
+              if (isValidTelegramButtonUrl(claimUrl)) {
+                const provShort = provider.replace('Official: ', '').slice(0, 14);
+                buttons.push({ text: `🎁 #${num} ${provShort}`, url: claimUrl });
+              }
+            });
+
+            const buttonRows: any[][] = [];
+            for (let i = 0; i < buttons.length; i += 2) {
+              buttonRows.push(buttons.slice(i, i + 2));
+            }
+            buttonRows.push([{ text: '🎁 Open Free Radar Hub', url: `${webAppUrl}/free` }]);
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: lines.join('\n'),
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: { inline_keyboard: buttonRows }
+            }), { headers });
+          }
+
+          // Handle /latest (or /stream)
+          if (cmd === '/latest' || cmd === '/stream') {
+            let recentList: any[] = [];
+            if (env.DB) {
+              const { results } = await env.DB.prepare(
+                `SELECT * FROM news ORDER BY published_at DESC LIMIT 5`
+              ).all();
+              recentList = results || [];
+            }
+
+            if (recentList.length === 0) {
+              return new Response(JSON.stringify({
+                method: 'sendMessage',
+                chat_id: chatId,
+                text: `⚡ <b>GLOBAL INTELLIGENCE STREAM</b>\n\nNo stream items available.`,
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+              }), { headers });
+            }
+
+            const lines = [
+              `⚡ <b>TECH SENTINEL — LATEST INTELLIGENCE STREAM</b>`,
+              `<i>Live chronological dispatch across all tech domains</i>\n`
+            ];
+            const buttons: any[] = [];
+
+            recentList.forEach((item: any, idx: number) => {
+              const num = idx + 1;
+              const title = escapeHtml(item.title || 'Untitled');
+              const cat = escapeHtml((item.category || 'tech').toUpperCase());
+              const source = escapeHtml(item.source_name || 'Source');
+              const timeAgo = formatTimeAgo(item.published_at);
+              const url = item.url || '';
+
+              lines.push(`<b>${num}. [${cat}] ${title}</b>`);
+              lines.push(`⏱️ <i>${source} • ${timeAgo}</i>`);
+              if (url) {
+                lines.push(`👉 <a href="${escapeHtml(url)}">View Story</a>\n`);
+              } else {
+                lines.push('');
+              }
+
+              if (isValidTelegramButtonUrl(url)) {
+                buttons.push({ text: `👉 Story #${num}`, url: url });
+              }
+            });
+
+            const buttonRows: any[][] = [];
+            for (let i = 0; i < buttons.length; i += 2) {
+              buttonRows.push(buttons.slice(i, i + 2));
+            }
+            buttonRows.push([{ text: '⚡ View Live Dashboard', url: webAppUrl }]);
+
+            return new Response(JSON.stringify({
+              method: 'sendMessage',
+              chat_id: chatId,
+              text: lines.join('\n'),
+              parse_mode: 'HTML',
+              disable_web_page_preview: true,
+              reply_markup: { inline_keyboard: buttonRows }
+            }), { headers });
+          }
+
+          // Fallback / unrecognized command
+          const fallbackText = (
+            `🤖 <b>Tech Sentinel Bot</b>\n\n` +
+            `Unrecognized command <code>${escapeHtml(cmd)}</code>.\n\n` +
+            `<b>Quick Commands:</b>\n` +
+            `• /news — Personalized intelligence feed\n` +
+            `• /opportunities — Free Radar credits & vouchers\n` +
+            `• /status — Check subscription status\n` +
+            `• /subscribe — Opt-in to daily 8:00 PM IST digest\n` +
+            `• /unsubscribe — Opt-out of daily digest\n` +
+            `• /help — Full command reference`
+          );
+
+          return new Response(JSON.stringify({
+            method: 'sendMessage',
+            chat_id: chatId,
+            text: fallbackText,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true
+          }), { headers });
+        }
       }
 
       // -------------------------------------------------------------

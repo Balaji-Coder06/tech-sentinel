@@ -184,13 +184,16 @@ INGESTION_SECRET=your_super_secret_token
    npx wrangler d1 execute tech-sentinel-db --file=database/seed.sql
    ```
 
-2. **Deploy Edge API (Cloudflare Workers)**:
+2. **Configure Worker Secrets & Deploy Edge API (Cloudflare Workers)**:
    ```bash
    npx wrangler secret put INGESTION_SECRET
+   npx wrangler secret put TELEGRAM_BOT_TOKEN
+   # Optional webhook secret token for header validation
+   npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
    npx wrangler deploy
    ```
 
-3. **Deploy Next.js Web App (Cloudflare Pages)**:
+3. **Deploy Next.js Web App (Cloudflare Pages / Vercel)**:
    ```bash
    cd apps/web
    npx @cloudflare/next-on-pages
@@ -198,9 +201,68 @@ INGESTION_SECRET=your_super_secret_token
 
 4. **Configure GitHub Actions Secrets**:
    In your GitHub repository settings, add:
-   - `WORKER_API_URL`: URL of your deployed Cloudflare Worker
+   - `WORKER_API_URL`: URL of your deployed Cloudflare Worker (`https://tech-sentinel-api.sbalaji06.workers.dev`)
    - `INGESTION_SECRET`: Same secret configured in Cloudflare Workers
-   - `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID`
+   - `TELEGRAM_BOT_TOKEN`: Your Telegram Bot API token
+
+---
+
+## 📱 Telegram Bot Webhook Architecture
+
+Tech Sentinel implements a **100% serverless, zero-polling** Telegram Bot webhook handler directly inside the Cloudflare Worker Edge API (`POST /api/telegram/webhook`).
+
+### 🤖 Supported Commands
+
+| Command | Action | Behavior |
+|---|---|---|
+| `/start` | Welcome & Auto-Register | Upserts user in Cloudflare D1 and enables daily digest (`telegram_digest_enabled = 1`) |
+| `/subscribe` | Enable Digest | Subscribes user to daily 8:00 PM IST personalized intelligence briefing |
+| `/unsubscribe` | Disable Digest | Opts out of daily briefings (can be resumed anytime) |
+| `/status` | Subscription Status | Reports current digest subscription state (`🟢 Subscribed` or `🔴 Not Subscribed`) |
+| `/help` | Command Menu | Displays complete command reference and dashboard links |
+| `/news` | Intelligence Feed | Returns top 5 curated stories directly from D1 with direct links & inline buttons |
+| `/opportunities` | Free Radar | Returns top 5 verified cloud credits & vouchers with claim URLs |
+| `/latest` | Live Stream | Chronological stream of latest intelligence across all domains |
+
+### 🚀 Production Webhook Registration
+
+To connect your Telegram Bot to the production Cloudflare Worker webhook:
+
+#### 1. Register Webhook with Telegram Bot API
+```bash
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://tech-sentinel-api.sbalaji06.workers.dev/api/telegram/webhook",
+    "secret_token": "<TELEGRAM_WEBHOOK_SECRET>",
+    "allowed_updates": ["message", "edited_message", "callback_query"],
+    "drop_pending_updates": true
+  }'
+```
+
+#### 2. Verify Webhook Status & Latency
+```bash
+curl -s "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
+```
+
+Expected response:
+```json
+{
+  "ok": true,
+  "result": {
+    "url": "https://tech-sentinel-api.sbalaji06.workers.dev/api/telegram/webhook",
+    "has_custom_certificate": false,
+    "pending_update_count": 0,
+    "max_connections": 40,
+    "ip_address": "..."
+  }
+}
+```
+
+#### 3. Reset or Delete Webhook (if switching back to local polling)
+```bash
+curl -s "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/deleteWebhook"
+```
 
 ---
 

@@ -227,14 +227,18 @@ class TelegramBotService:
         
         return (
             f"⚡ <b>Welcome to Tech Sentinel{name_str}!</b>\n\n"
-            "Your personal technology intelligence agent and free opportunity radar.\n\n"
+            "Your personal technology intelligence agent and free opportunity radar.\n"
+            "✅ <b>Daily Digest:</b> Enabled (Daily at 8:00 PM IST)\n\n"
             "🔹 <b>Curated Intelligence:</b> Verified AI, Cloud, Dev & Open Source developments\n"
             "🔹 <b>Free Radar:</b> Cloud credits (AWS/GCP/Azure), 100% exam vouchers & student perks\n"
             "🔹 <b>Nightly Briefs:</b> Fast 30-second daily summaries\n\n"
             "<b>Quick Commands:</b>\n"
             "• /news — Personalized intelligence feed\n"
-            "• /latest — Global chronological stream\n"
             "• /opportunities — Active Free Radar credits & vouchers\n"
+            "• /latest — Global chronological stream\n"
+            "• /status — Check your subscription status\n"
+            "• /subscribe — Opt-in to daily digest\n"
+            "• /unsubscribe — Pause daily digest\n"
             "• /help — Full command menu"
             f"{web_line}"
         )
@@ -248,9 +252,9 @@ class TelegramBotService:
         last_name: Optional[str] = None,
         username: Optional[str] = None
     ) -> bool:
-        """Registers/updates Telegram user in SQLite and replies with welcome briefing."""
+        """Registers/updates Telegram user in SQLite, enables daily digest, and replies with welcome briefing."""
         resolved_user_id = str(user_id or chat_id)
-        # Idempotently register/update user in SQLite
+        # Idempotently register/update user in SQLite and enable daily digest
         try:
             self.db.upsert_telegram_user(
                 user_id=resolved_user_id,
@@ -259,6 +263,7 @@ class TelegramBotService:
                 first_name=first_name,
                 last_name=last_name
             )
+            self.db.set_telegram_digest_subscription(resolved_user_id, enabled=True)
             # Synchronize updated Telegram users & preferences to Cloudflare D1 if configured
             d1_client = D1SyncClient()
             if d1_client.is_configured:
@@ -299,7 +304,10 @@ class TelegramBotService:
             "• /latest — Global live intelligence stream in chronological order (all categories)\n\n"
             "🎁 <b>Free Opportunity Radar:</b>\n"
             "• /opportunities — High-value cloud credits, 100% free cert vouchers, and developer perks\n\n"
-            "⚙️ <b>System:</b>\n"
+            "⚙️ <b>Subscription & Settings:</b>\n"
+            "• /status — Check your current subscription status\n"
+            "• /subscribe — Opt-in to daily 8:00 PM IST digest\n"
+            "• /unsubscribe — Opt-out / pause daily digest\n"
             "• /start — Replay initial welcome briefing\n"
             "• /help — Display this command menu"
             f"{web_line}"
@@ -723,6 +731,12 @@ class TelegramBotService:
             return self.handle_opportunities_command(chat_id)
         elif cmd in ("/latest", "/stream"):
             return self.handle_latest_command(chat_id)
+        elif cmd == "/subscribe":
+            return self.handle_digest_command(chat_id=chat_id, user_id=user_id, arg="on")
+        elif cmd == "/unsubscribe":
+            return self.handle_digest_command(chat_id=chat_id, user_id=user_id, arg="off")
+        elif cmd == "/status":
+            return self.handle_digest_command(chat_id=chat_id, user_id=user_id, arg=None)
         elif cmd == "/digest":
             return self.handle_digest_command(chat_id=chat_id, user_id=user_id, arg=arg)
         else:
