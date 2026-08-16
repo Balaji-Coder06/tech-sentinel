@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import httpx
 from .provider import BaseAIProvider
 from .fallback_provider import FallbackProvider
@@ -10,11 +10,12 @@ from ..config import settings
 logger = logging.getLogger(__name__)
 
 class GeminiProvider(BaseAIProvider):
-    """Google Gemini Free Tier integration."""
+    """Google Gemini Free Tier (gemini-2.5-flash) inference provider."""
     
-    def __init__(self):
+    def __init__(self, fallback: Optional[BaseAIProvider] = None):
         self.api_key = settings.GEMINI_API_KEY
-        self.fallback = FallbackProvider()
+        self.fallback = fallback or FallbackProvider()
+        self.model = "gemini-2.5-flash"
 
     def generate_summary(self, title: str, content: str, category: str) -> SentinelSummary:
         if not self.api_key:
@@ -35,7 +36,7 @@ Return JSON with exact keys:
   "key_points": ["point 1", "point 2", "point 3"]
 }}
 """
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
         try:
             with httpx.Client(timeout=10.0) as client:
                 res = client.post(url, json={
@@ -46,14 +47,17 @@ Return JSON with exact keys:
                     data = res.json()
                     text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
                     parsed = json.loads(text_resp)
+                    logger.info(f"✨ [AI Gemini: {self.model}] Summarized: '{title[:45]}...'")
                     return SentinelSummary(
                         what=parsed.get("what", title),
                         why=parsed.get("why", "Relevant technology update."),
                         action=parsed.get("action", "Learn more on official docs."),
                         key_points=parsed.get("key_points", [])
                     )
+                else:
+                    logger.warning(f"Gemini API returned HTTP {res.status_code}, cascading to fallback.")
         except Exception as e:
-            logger.warning(f"Gemini API error, falling back: {e}")
+            logger.warning(f"Gemini API error ({e}), cascading to fallback.")
 
         return self.fallback.generate_summary(title, content, category)
 
@@ -80,7 +84,7 @@ Return JSON with exact keys:
   "sentinel_take": "Thoughtful editorial analysis of what today's shifts mean for developers"
 }}
 """
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
         try:
             with httpx.Client(timeout=12.0) as client:
                 res = client.post(url, json={
@@ -90,8 +94,11 @@ Return JSON with exact keys:
                 if res.status_code == 200:
                     data = res.json()
                     text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
+                    logger.info(f"✨ [AI Gemini: {self.model}] Nightly digest generated successfully.")
                     return json.loads(text_resp)
+                else:
+                    logger.warning(f"Gemini digest returned HTTP {res.status_code}, cascading to fallback.")
         except Exception as e:
-            logger.warning(f"Gemini digest error, falling back: {e}")
+            logger.warning(f"Gemini digest error ({e}), cascading to fallback.")
 
         return self.fallback.generate_daily_digest(news_items, opportunities)

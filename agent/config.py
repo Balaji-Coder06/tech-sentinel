@@ -24,7 +24,7 @@ class Settings(BaseModel):
     INGESTION_SECRET: str = os.getenv("INGESTION_SECRET", "")  # Secret token shared between GH Actions & Worker
     
     # AI Providers (Zero-cost / Free Tier first)
-    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "fallback")  # options: fallback, gemini, groq, local
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "auto")  # options: auto, groq, gemini, local, fallback
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     LOCAL_AI_BASE_URL: str = os.getenv("LOCAL_AI_BASE_URL", "http://localhost:11434/v1")
