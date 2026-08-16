@@ -141,6 +141,8 @@ export interface UserPreferences {
   enable_daily_brief: boolean;
   enable_critical_alerts: boolean;
   telegram_chat_id?: string;
+  email_newsletter_enabled: boolean;
+  newsletter_email?: string;
 }
 
 export interface AgentStats {

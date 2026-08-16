@@ -179,7 +179,7 @@ def run_nightly_report(db: Database, notify: bool = False):
 
 def main():
     parser = argparse.ArgumentParser(description="Tech Sentinel Agent Engine")
-    parser.add_argument("command", choices=["collect", "process", "report", "notify", "run-all", "telegram"], help="Command to execute")
+    parser.add_argument("command", choices=["collect", "process", "report", "dispatch", "notify", "run-all", "telegram"], help="Command to execute")
     parser.add_argument("action", nargs="?", default="test", help="Action for telegram command (test, info, poll)")
     parser.add_argument("--dry-run", action="store_true", help="Simulate run without writing to database")
     args = parser.parse_args()
@@ -195,51 +195,53 @@ def main():
     elif args.command == "report":
         run_nightly_report(db, notify=False)
         print("Nightly report generated and persisted to database.")
-    elif args.command == "notify":
-        latest = db.get_latest_report()
-        if latest:
-            notifier = TelegramNotifier()
-            notifier.send_daily_digest(DailyReport(**latest))
-            print("Dispatched nightly digest to Telegram.")
-        else:
-            print("No report found in database.")
+    elif args.command == "dispatch" or args.command == "notify":
+        from .dispatch import run_unified_dispatch
+        stats = run_unified_dispatch()
+        print(
+            f"[OK] Unified Dispatch Complete: "
+            f"Telegram ({stats['telegram']['delivered']}/{stats['telegram']['candidates']} delivered), "
+            f"Email ({stats['email']['delivered']}/{stats['email']['candidates']} delivered)."
+        )
     elif args.command == "run-all":
         run_collection(db)
         run_processing(db)
-        run_nightly_report(db, notify=True)
+        run_nightly_report(db, notify=False)
+        from .dispatch import run_unified_dispatch
+        stats = run_unified_dispatch()
         print("End-to-end cycle completed successfully.")
     elif args.command == "telegram":
         from .telegram.service import TelegramBotService
         bot = TelegramBotService()
         if not bot.is_configured:
-            print("❌ TELEGRAM_BOT_TOKEN is not configured in environment or .env file.")
+            print("[ERROR] TELEGRAM_BOT_TOKEN is not configured in environment or .env file.")
             sys.exit(1)
 
         if args.action == "info":
             info = bot.get_bot_info()
             if info:
-                print(f"✅ Telegram Bot Connected: @{info.get('username')} ({info.get('first_name')}) [ID: {info.get('id')}]")
+                print(f"[OK] Telegram Bot Connected: @{info.get('username')} ({info.get('first_name')}) [ID: {info.get('id')}]")
             else:
-                print("❌ Failed to connect to Telegram Bot API. Verify your TELEGRAM_BOT_TOKEN.")
+                print("[ERROR] Failed to connect to Telegram Bot API. Verify your TELEGRAM_BOT_TOKEN.")
         elif args.action == "test":
             success = bot.send_test_message()
             if success:
-                print("✅ Test message dispatched successfully to Telegram.")
+                print("[OK] Test message dispatched successfully to Telegram.")
             else:
-                print("❌ Test message dispatch failed. Ensure TELEGRAM_CHAT_ID is set or pass target.")
+                print("[ERROR] Test message dispatch failed. Ensure TELEGRAM_CHAT_ID is set or pass target.")
         elif args.action == "digest":
             from .telegram.digest import run_telegram_digest
             res = run_telegram_digest()
-            print(f"✅ Telegram Digest Dispatch: {res.get('dispatched', 0)} delivered, {res.get('failed', 0)} failed.")
+            print(f"[OK] Telegram Digest Dispatch: {res.get('dispatched', 0)} delivered, {res.get('failed', 0)} failed.")
         elif args.action == "poll":
-            print("🤖 Starting Telegram Bot polling (listening for /start)... Press Ctrl+C to stop.")
+            print("[INFO] Starting Telegram Bot polling (listening for /start)... Press Ctrl+C to stop.")
             offset = None
             try:
                 while True:
                     _, offset = bot.process_updates(offset)
                     time.sleep(2)
             except KeyboardInterrupt:
-                print("\n🛑 Telegram Bot polling stopped.")
+                print("\n[INFO] Telegram Bot polling stopped.")
 
 if __name__ == "__main__":
     main()

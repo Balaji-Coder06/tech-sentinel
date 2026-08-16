@@ -108,6 +108,8 @@ class UserPreferences(BaseModel):
     enable_daily_brief: bool = True
     enable_critical_alerts: bool = True
     telegram_chat_id: Optional[str] = None
+    email_newsletter_enabled: bool = False
+    newsletter_email: Optional[str] = None
 
 class SystemStatus(BaseModel):
     id: str = "current"

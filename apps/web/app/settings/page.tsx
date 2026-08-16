@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '../../components/Header';
 import { UserPreferences } from '../../lib/types';
 import { fetchPreferences, savePreferences } from '../../lib/api-client';
-import { Sliders, Bell, Check, Cpu, Loader2 } from 'lucide-react';
+import { Sliders, Bell, Check, Cpu, Loader2, Mail } from 'lucide-react';
 
 export default function SettingsPage() {
   const [prefs, setPrefs] = useState<UserPreferences>({
@@ -15,7 +15,9 @@ export default function SettingsPage() {
     keywords: ['react', 'llm', 'credits', 'internship', 'certification', 'hackathon'],
     opportunity_types: ['software', 'ai_credits', 'cloud', 'education', 'certification', 'competition', 'career'],
     enable_daily_brief: true,
-    enable_critical_alerts: true
+    enable_critical_alerts: true,
+    email_newsletter_enabled: false,
+    newsletter_email: ''
   });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -233,8 +235,8 @@ export default function SettingsPage() {
             <div className="space-y-3 pt-2">
               <label className="flex items-center justify-between p-3 rounded-2xl border border-sentinel-border bg-sentinel-card cursor-pointer">
                 <div>
-                  <span className="text-xs font-bold text-sentinel-text block">Nightly Intelligence Brief</span>
-                  <span className="text-[11px] text-sentinel-muted">Receive the full daily summary every night at 9:00 PM IST</span>
+                  <span className="text-xs font-bold text-sentinel-text block">Nightly Telegram Brief</span>
+                  <span className="text-[11px] text-sentinel-muted">Receive the full daily summary via Telegram every night at 9:30 PM IST</span>
                 </div>
                 <input
                   type="checkbox"
@@ -256,6 +258,39 @@ export default function SettingsPage() {
                   className="w-4 h-4 accent-sentinel-accent rounded"
                 />
               </label>
+
+              <div className="p-3.5 rounded-2xl border border-sentinel-border bg-sentinel-card space-y-2.5">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-sentinel-accent" />
+                    <div>
+                      <span className="text-xs font-bold text-sentinel-text block">Gmail / Email Newsletter</span>
+                      <span className="text-[11px] text-sentinel-muted">Receive the Nightly Intelligence Brief in your inbox at 9:30 PM IST</span>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={prefs.email_newsletter_enabled}
+                    onChange={(e) => setPrefs({ ...prefs, email_newsletter_enabled: e.target.checked })}
+                    className="w-4 h-4 accent-sentinel-accent rounded"
+                  />
+                </label>
+
+                {prefs.email_newsletter_enabled && (
+                  <div className="pt-2 border-t border-sentinel-border/50">
+                    <label className="block text-[11px] font-bold text-sentinel-muted mb-1">
+                      Newsletter Recipient Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="e.g. balaji@example.com"
+                      value={prefs.newsletter_email || ''}
+                      onChange={(e) => setPrefs({ ...prefs, newsletter_email: e.target.value })}
+                      className="w-full px-3.5 py-2 text-xs rounded-xl bg-sentinel-bg border border-sentinel-border text-sentinel-text focus:outline-none focus:border-sentinel-accent transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

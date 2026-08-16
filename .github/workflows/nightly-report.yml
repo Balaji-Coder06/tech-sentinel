@@ -1,12 +1,12 @@
-name: Tech Sentinel Nightly Digest & Telegram Dispatch
+name: Tech Sentinel Nightly Intelligence & Unified Dispatch
 
 on:
   schedule:
-    - cron: '30 15 * * *' # 21:00 IST / 15:30 UTC
+    - cron: '30 16 * * *' # 9:30 PM IST / 16:00 UTC
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  generate-and-notify:
+  nightly-report-and-dispatch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -22,13 +22,19 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Generate Nightly Digest, Sync & Notify Telegram
+      - name: Generate Nightly Intelligence Report & Dispatch
         env:
           WORKER_API_URL: ${{ secrets.WORKER_API_URL }}
           INGESTION_SECRET: ${{ secrets.INGESTION_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || secrets.GMAIL_USER || '' }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.GMAIL_APP_PASSWORD || '' }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM || '' }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL || 'https://tech-sentinel.pages.dev' }}
+          WEB_APP_URL: ${{ secrets.WEB_APP_URL || '' }}
         run: |
           python -m agent.main report
-          python -m agent.main notify
+          python -m agent.main dispatch

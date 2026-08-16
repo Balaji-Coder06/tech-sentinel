@@ -212,6 +212,36 @@ class Database:
             except Exception as e:
                 logger.warning(f"Note during preferences migration: {e}")
 
+            # 8. Idempotently ensure email newsletter columns exist in preferences table
+            try:
+                cursor.execute("ALTER TABLE preferences ADD COLUMN email_newsletter_enabled INTEGER DEFAULT 0;")
+            except Exception:
+                pass
+            try:
+                cursor.execute("ALTER TABLE preferences ADD COLUMN newsletter_email TEXT;")
+            except Exception:
+                pass
+            try:
+                cursor.execute("ALTER TABLE preferences ADD COLUMN last_email_sent_at TEXT;")
+            except Exception:
+                pass
+
+            # 9. Idempotently ensure delivery_logs table exists
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS delivery_logs (
+                id TEXT PRIMARY KEY,
+                report_id TEXT NOT NULL,
+                report_date TEXT NOT NULL,
+                channel TEXT NOT NULL CHECK(channel IN ('telegram', 'email')),
+                recipient_id TEXT NOT NULL,
+                status TEXT NOT NULL CHECK(status IN ('DELIVERED', 'FAILED')),
+                delivered_at TEXT NOT NULL DEFAULT (datetime('now')),
+                metadata TEXT,
+                UNIQUE(report_date, channel, recipient_id)
+            );
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_delivery_logs_lookup ON delivery_logs(report_date, channel, recipient_id, status);")
+
             # Check if news table is empty -> seed
             cursor.execute("SELECT COUNT(*) FROM news")
             count = cursor.fetchone()[0]
@@ -557,12 +587,15 @@ class Database:
                     "keywords": ["react", "llm", "credits", "internship", "certification", "hackathon", "copilot"],
                     "opportunity_types": ["software", "ai_credits", "cloud", "education", "certification", "competition", "career"],
                     "enable_daily_brief": True,
-                    "enable_critical_alerts": True
+                    "enable_critical_alerts": True,
+                    "email_newsletter_enabled": False,
+                    "newsletter_email": None
                 }
 
             preferences = dict(row)
             # Remove legacy field if present in SQLite row dict
             preferences.pop("ai_provider", None)
+            preferences["email_newsletter_enabled"] = bool(preferences.get("email_newsletter_enabled", 0))
             for field in ["categories", "keywords", "opportunity_types"]:
                 if isinstance(preferences.get(field), str):
                     try:
@@ -577,8 +610,8 @@ class Database:
         query = """
         INSERT INTO preferences (
             id, user_name, theme, categories, keywords, opportunity_types,
-            enable_daily_brief, enable_critical_alerts, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(id) DO UPDATE SET
             user_name=excluded.user_name,
             theme=excluded.theme,
@@ -587,6 +620,8 @@ class Database:
             opportunity_types=excluded.opportunity_types,
             enable_daily_brief=excluded.enable_daily_brief,
             enable_critical_alerts=excluded.enable_critical_alerts,
+            email_newsletter_enabled=excluded.email_newsletter_enabled,
+            newsletter_email=excluded.newsletter_email,
             updated_at=datetime('now')
         """
         categories = json.dumps(prefs.get("categories", []))
@@ -601,12 +636,70 @@ class Database:
                     prefs.get("theme", "system"),
                     categories, keywords, opportunity_types,
                     1 if prefs.get("enable_daily_brief", True) else 0,
-                    1 if prefs.get("enable_critical_alerts", True) else 0
+                    1 if prefs.get("enable_critical_alerts", True) else 0,
+                    1 if prefs.get("email_newsletter_enabled", False) else 0,
+                    prefs.get("newsletter_email") or None
                 ))
                 return True
             except Exception as e:
                 logger.error(f"Error updating preferences for {target_id}: {e}")
                 return False
+
+    def get_email_subscribers(self) -> List[Dict[str, Any]]:
+        """Returns all user preference records with email newsletter explicitly opted in."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            SELECT * FROM preferences 
+            WHERE email_newsletter_enabled = 1 
+              AND newsletter_email IS NOT NULL 
+              AND TRIM(newsletter_email) != ''
+            """)
+            rows = cursor.fetchall()
+            subscribers = []
+            for r in rows:
+                p = dict(r)
+                p.pop("ai_provider", None)
+                p["email_newsletter_enabled"] = True
+                for field in ["categories", "keywords", "opportunity_types"]:
+                    if isinstance(p.get(field), str):
+                        try:
+                            p[field] = json.loads(p[field])
+                        except Exception:
+                            p[field] = []
+                subscribers.append(p)
+            return subscribers
+
+    def record_email_sent(self, email: str):
+        """Records last newsletter dispatch timestamp for the recipient."""
+        with self.get_connection() as conn:
+            try:
+                conn.execute(
+                    "UPDATE preferences SET last_email_sent_at = datetime('now') WHERE newsletter_email = ?",
+                    (email.strip(),)
+                )
+            except Exception:
+                pass
+
+    def get_all_preferences(self) -> List[Dict[str, Any]]:
+        """Returns all stored preferences profiles."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM preferences")
+            rows = cursor.fetchall()
+            prefs_list = []
+            for r in rows:
+                p = dict(r)
+                p.pop("ai_provider", None)
+                p["email_newsletter_enabled"] = bool(p.get("email_newsletter_enabled", 0))
+                for field in ["categories", "keywords", "opportunity_types"]:
+                    if isinstance(p.get(field), str):
+                        try:
+                            p[field] = json.loads(p[field])
+                        except Exception:
+                            p[field] = []
+                prefs_list.append(p)
+            return prefs_list
 
     # -------------------------------------------------------------
     # Telegram User Registration & Preferences
@@ -783,3 +876,93 @@ class Database:
                 "next_report_time": "9:00 PM IST",
                 "system_cost": "₹0.00"
             }
+
+    # -------------------------------------------------------------
+    # Multi-Channel Delivery Logs & Idempotency Tracking
+    # -------------------------------------------------------------
+    def is_report_delivered(self, report_date: str, channel: str, recipient_id: str) -> bool:
+        """
+        Checks whether a specific report/date was already successfully delivered
+        to a recipient on a specific channel.
+        """
+        date_str = str(report_date).strip()
+        chan_str = str(channel).strip().lower()
+        recip_str = str(recipient_id).strip().lower()
+        if not (date_str and chan_str and recip_str):
+            return False
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT 1 FROM delivery_logs WHERE report_date = ? AND channel = ? AND recipient_id = ? AND status = 'DELIVERED' LIMIT 1",
+                (date_str, chan_str, recip_str)
+            )
+            return cursor.fetchone() is not None
+
+    def record_delivery(
+        self,
+        report_id: str,
+        report_date: str,
+        channel: str,
+        recipient_id: str,
+        status: str = "DELIVERED",
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Persists an idempotent delivery attempt record (DELIVERED or FAILED).
+        Only DELIVERED prevents future duplicate sends.
+        """
+        date_str = str(report_date).strip()
+        chan_str = str(channel).strip().lower()
+        recip_str = str(recipient_id).strip().lower()
+        rep_id = str(report_id).strip()
+        stat_str = str(status).strip().upper()
+        meta_json = json.dumps(metadata or {})
+        log_id = f"{date_str}:{chan_str}:{hashlib.sha256(recip_str.encode('utf-8')).hexdigest()[:12]}"
+
+        query = """
+        INSERT INTO delivery_logs (
+            id, report_id, report_date, channel, recipient_id, status, delivered_at, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
+        ON CONFLICT(report_date, channel, recipient_id) DO UPDATE SET
+            status=excluded.status,
+            delivered_at=datetime('now'),
+            metadata=excluded.metadata
+        """
+        with self.get_connection() as conn:
+            try:
+                conn.execute(query, (log_id, rep_id, date_str, chan_str, recip_str, stat_str, meta_json))
+                return True
+            except Exception as e:
+                logger.error(f"Error recording delivery log: {e}")
+                return False
+
+    def get_delivery_logs(
+        self,
+        report_date: Optional[str] = None,
+        channel: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Retrieves delivery records filtered by date and/or channel."""
+        query = "SELECT * FROM delivery_logs WHERE 1=1"
+        params: List[Any] = []
+        if report_date:
+            query += " AND report_date = ?"
+            params.append(report_date.strip())
+        if channel:
+            query += " AND channel = ?"
+            params.append(channel.strip().lower())
+        query += " ORDER BY delivered_at DESC"
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, tuple(params))
+            results = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                if isinstance(d.get("metadata"), str):
+                    try:
+                        d["metadata"] = json.loads(d["metadata"])
+                    except Exception:
+                        pass
+                results.append(d)
+            return results

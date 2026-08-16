@@ -324,7 +324,7 @@ INSERT OR IGNORE INTO daily_reports (
 );
 
 -- 6. Insert Default Preferences
-INSERT OR IGNORE INTO preferences (id, user_name, theme, categories, keywords, opportunity_types, enable_daily_brief, enable_critical_alerts)
+INSERT OR IGNORE INTO preferences (id, user_name, theme, categories, keywords, opportunity_types, enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email)
 VALUES (
     'default',
     'Balaji',
@@ -333,7 +333,9 @@ VALUES (
     '["react", "llm", "credits", "internship", "certification", "hackathon", "copilot"]',
     '["software", "ai_credits", "cloud", "education", "certification", "competition", "career"]',
     1,
-    1
+    1,
+    0,
+    NULL
 );
 
 -- 7. Insert Initial Saved Bookmarks

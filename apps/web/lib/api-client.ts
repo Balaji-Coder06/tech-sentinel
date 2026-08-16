@@ -199,7 +199,9 @@ export async function fetchPreferences(): Promise<UserPreferences> {
       keywords: ['react', 'llm', 'credits', 'internship', 'certification', 'hackathon', 'copilot'],
       opportunity_types: ['software', 'ai_credits', 'cloud', 'education', 'certification', 'competition', 'career'],
       enable_daily_brief: true,
-      enable_critical_alerts: true
+      enable_critical_alerts: true,
+      email_newsletter_enabled: false,
+      newsletter_email: ''
     };
   }
 }

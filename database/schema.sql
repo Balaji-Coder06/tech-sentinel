@@ -142,6 +142,9 @@ CREATE TABLE IF NOT EXISTS preferences (
     enable_daily_brief INTEGER DEFAULT 1,
     enable_critical_alerts INTEGER DEFAULT 1,
     telegram_chat_id TEXT,
+    email_newsletter_enabled INTEGER DEFAULT 0,
+    newsletter_email TEXT,
+    last_email_sent_at TEXT,
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -195,6 +198,19 @@ CREATE TABLE IF NOT EXISTS telegram_users (
     FOREIGN KEY(preference_id) REFERENCES preferences(id)
 );
 
+-- 11. Delivery Logs (Idempotent Multi-Channel Nightly Dispatch Tracking)
+CREATE TABLE IF NOT EXISTS delivery_logs (
+    id TEXT PRIMARY KEY,
+    report_id TEXT NOT NULL,
+    report_date TEXT NOT NULL,
+    channel TEXT NOT NULL CHECK(channel IN ('telegram', 'email')),
+    recipient_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('DELIVERED', 'FAILED')),
+    delivered_at TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata TEXT,
+    UNIQUE(report_date, channel, recipient_id)
+);
+
 -- Unique and Performance Indexes
 CREATE UNIQUE INDEX IF NOT EXISTS idx_opps_claim_url ON opportunities(claim_url);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_news_url ON news(url);
@@ -210,3 +226,4 @@ CREATE INDEX IF NOT EXISTS idx_opps_score ON opportunities(importance_score DESC
 CREATE INDEX IF NOT EXISTS idx_reports_date ON daily_reports(date DESC);
 CREATE INDEX IF NOT EXISTS idx_saved_items ON saved_items(item_type, item_id);
 CREATE INDEX IF NOT EXISTS idx_telegram_users_chat_id ON telegram_users(chat_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_logs_lookup ON delivery_logs(report_date, channel, recipient_id, status);

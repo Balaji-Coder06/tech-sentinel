@@ -66,13 +66,13 @@ export default {
           env.DB.prepare(`
             INSERT INTO preferences (
               id, user_name, theme, categories, keywords, opportunity_types,
-              enable_daily_brief, enable_critical_alerts, updated_at
+              enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email, updated_at
             ) VALUES (
               'default', 'Balaji', 'system',
               '["ai","cloud","development","open_source","cybersecurity","startups"]',
               '["react","llm","credits","internship","certification","hackathon","copilot"]',
               '["software","ai_credits","cloud","education","certification","competition","career"]',
-              1, 1, datetime('now')
+              1, 1, 0, NULL, datetime('now')
             )
             ON CONFLICT(id) DO NOTHING
           `)
@@ -89,8 +89,8 @@ export default {
             env.DB.prepare(`
               INSERT INTO preferences (
                 id, user_name, theme, categories, keywords, opportunity_types,
-                enable_daily_brief, enable_critical_alerts, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
               ON CONFLICT(id) DO UPDATE SET
                 user_name=excluded.user_name,
                 theme=excluded.theme,
@@ -99,6 +99,8 @@ export default {
                 opportunity_types=excluded.opportunity_types,
                 enable_daily_brief=excluded.enable_daily_brief,
                 enable_critical_alerts=excluded.enable_critical_alerts,
+                email_newsletter_enabled=excluded.email_newsletter_enabled,
+                newsletter_email=excluded.newsletter_email,
                 updated_at=datetime('now')
             `).bind(
               prefId,
@@ -108,7 +110,9 @@ export default {
               keywords,
               opportunityTypes,
               pref.enable_daily_brief ? 1 : 0,
-              pref.enable_critical_alerts ? 1 : 0
+              pref.enable_critical_alerts ? 1 : 0,
+              pref.email_newsletter_enabled ? 1 : 0,
+              pref.newsletter_email || null
             )
           );
         }
@@ -605,7 +609,9 @@ export default {
               keywords: JSON.parse(row.keywords || '[]'),
               opportunity_types: JSON.parse(row.opportunity_types || '[]'),
               enable_daily_brief: Boolean(row.enable_daily_brief),
-              enable_critical_alerts: Boolean(row.enable_critical_alerts)
+              enable_critical_alerts: Boolean(row.enable_critical_alerts),
+              email_newsletter_enabled: Boolean(row.email_newsletter_enabled),
+              newsletter_email: row.newsletter_email || null
             }
           }), { headers });
         }
@@ -619,8 +625,8 @@ export default {
           await env.DB.prepare(`
             INSERT INTO preferences (
               id, user_name, theme, categories, keywords, opportunity_types,
-              enable_daily_brief, enable_critical_alerts, updated_at
-            ) VALUES ('default', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+              enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email, updated_at
+            ) VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(id) DO UPDATE SET
               user_name=excluded.user_name,
               theme=excluded.theme,
@@ -629,6 +635,8 @@ export default {
               opportunity_types=excluded.opportunity_types,
               enable_daily_brief=excluded.enable_daily_brief,
               enable_critical_alerts=excluded.enable_critical_alerts,
+              email_newsletter_enabled=excluded.email_newsletter_enabled,
+              newsletter_email=excluded.newsletter_email,
               updated_at=datetime('now')
           `).bind(
             body.user_name || 'Balaji',
@@ -637,7 +645,9 @@ export default {
             keywords,
             opportunityTypes,
             body.enable_daily_brief ? 1 : 0,
-            body.enable_critical_alerts ? 1 : 0
+            body.enable_critical_alerts ? 1 : 0,
+            body.email_newsletter_enabled ? 1 : 0,
+            body.newsletter_email || null
           ).run();
 
           return new Response(JSON.stringify({ success: true, data: body }), { headers });

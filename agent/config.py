@@ -23,9 +23,17 @@ class Settings(BaseModel):
     WORKER_API_URL: str = os.getenv("WORKER_API_URL", "")  # e.g., https://tech-sentinel-api.your-subdomain.workers.dev
     INGESTION_SECRET: str = os.getenv("INGESTION_SECRET", "")  # Secret token shared between GH Actions & Worker
     
-    # Notifications
+    # Notifications & Delivery
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+    
+    # Generic SMTP / Gmail Email Delivery
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", os.getenv("GMAIL_USER", os.getenv("EMAIL_USER", "")))
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", os.getenv("GMAIL_APP_PASSWORD", os.getenv("EMAIL_PASSWORD", "")))
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
     
     # Web / App URL
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000")

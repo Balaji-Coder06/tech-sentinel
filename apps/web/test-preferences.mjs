@@ -17,7 +17,9 @@ function getPreferences() {
       keywords: typeof row.keywords === 'string' ? JSON.parse(row.keywords || '[]') : row.keywords || [],
       opportunity_types: typeof row.opportunity_types === 'string' ? JSON.parse(row.opportunity_types || '[]') : row.opportunity_types || [],
       enable_daily_brief: Boolean(row.enable_daily_brief),
-      enable_critical_alerts: Boolean(row.enable_critical_alerts)
+      enable_critical_alerts: Boolean(row.enable_critical_alerts),
+      email_newsletter_enabled: Boolean(row.email_newsletter_enabled),
+      newsletter_email: row.newsletter_email || ''
     };
   }
   return {
@@ -28,7 +30,9 @@ function getPreferences() {
     keywords: [],
     opportunity_types: ['ai_credits', 'cloud'],
     enable_daily_brief: true,
-    enable_critical_alerts: true
+    enable_critical_alerts: true,
+    email_newsletter_enabled: false,
+    newsletter_email: ''
   };
 }
 
@@ -38,9 +42,9 @@ function updatePreferences(prefs) {
   db.prepare(`
     INSERT INTO preferences (
       id, user_name, theme, categories, keywords, opportunity_types,
-      enable_daily_brief, enable_critical_alerts, updated_at
+      enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email, updated_at
     ) VALUES (
-      'default', ?, ?, ?, ?, ?, ?, ?, datetime('now')
+      'default', ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
     )
     ON CONFLICT(id) DO UPDATE SET
       user_name=excluded.user_name,
@@ -50,6 +54,8 @@ function updatePreferences(prefs) {
       opportunity_types=excluded.opportunity_types,
       enable_daily_brief=excluded.enable_daily_brief,
       enable_critical_alerts=excluded.enable_critical_alerts,
+      email_newsletter_enabled=excluded.email_newsletter_enabled,
+      newsletter_email=excluded.newsletter_email,
       updated_at=datetime('now')
   `).run(
     merged.user_name || 'Balaji',
@@ -58,7 +64,9 @@ function updatePreferences(prefs) {
     JSON.stringify(merged.keywords || []),
     JSON.stringify(merged.opportunity_types || []),
     merged.enable_daily_brief ? 1 : 0,
-    merged.enable_critical_alerts ? 1 : 0
+    merged.enable_critical_alerts ? 1 : 0,
+    merged.email_newsletter_enabled ? 1 : 0,
+    merged.newsletter_email || null
   );
   return getPreferences();
 }
@@ -82,12 +90,16 @@ function updatePreferences(prefs) {
     keywords: ['llm', 'agent', 'transformer'],
     opportunity_types: ['ai_credits', 'certification'],
     enable_daily_brief: true,
-    enable_critical_alerts: true
+    enable_critical_alerts: true,
+    email_newsletter_enabled: true,
+    newsletter_email: 'balaji@example.com'
   });
 
   assert.equal(updated.user_name, 'Balaji Coder');
   assert.deepEqual(updated.categories, ['ai']);
   assert.deepEqual(updated.opportunity_types, ['ai_credits', 'certification']);
+  assert.equal(updated.email_newsletter_enabled, true);
+  assert.equal(updated.newsletter_email, 'balaji@example.com');
 
   // Verify persistence by reading directly from SQLite with a new DB connection
   const directDb = new DatabaseSync('../../database/tech_sentinel.db');
@@ -95,8 +107,10 @@ function updatePreferences(prefs) {
   assert.equal(row.user_name, 'Balaji Coder');
   assert.deepEqual(JSON.parse(row.categories), ['ai']);
   assert.deepEqual(JSON.parse(row.opportunity_types), ['ai_credits', 'certification']);
+  assert.equal(Boolean(row.email_newsletter_enabled), true);
+  assert.equal(row.newsletter_email, 'balaji@example.com');
 
-  console.log('✅ Test 2 Passed: Preferences persisted and verified in SQLite database across independent queries.');
+  console.log('✅ Test 2 Passed: Preferences including email newsletter persisted and verified in SQLite database.');
 }
 
 // -------------------------------------------------------------

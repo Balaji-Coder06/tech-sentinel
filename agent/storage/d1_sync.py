@@ -13,9 +13,9 @@ class D1SyncClient:
     """
 
     def __init__(self, worker_url: Optional[str] = None, secret: Optional[str] = None):
-        raw_url = worker_url or settings.WORKER_API_URL or ""
-        self.worker_url = raw_url.rstrip('/')
-        self.secret = secret or settings.INGESTION_SECRET or ""
+        raw_url = settings.WORKER_API_URL if worker_url is None else worker_url
+        self.worker_url = (raw_url or "").rstrip('/')
+        self.secret = settings.INGESTION_SECRET if secret is None else (secret or "")
 
     @property
     def is_configured(self) -> bool:

@@ -561,7 +561,7 @@ export const serverDb = {
     const db = getSqliteDb();
     if (db) {
       try {
-        const row = db.prepare("SELECT * FROM preferences WHERE id = 'default' LIMIT 1").get();
+        const row: any = db.prepare("SELECT * FROM preferences WHERE id = 'default' LIMIT 1").get();
         if (row) {
           return {
             ...row,
@@ -569,7 +569,9 @@ export const serverDb = {
             keywords: typeof row.keywords === 'string' ? JSON.parse(row.keywords || '[]') : row.keywords || [],
             opportunity_types: typeof row.opportunity_types === 'string' ? JSON.parse(row.opportunity_types || '[]') : row.opportunity_types || [],
             enable_daily_brief: Boolean(row.enable_daily_brief),
-            enable_critical_alerts: Boolean(row.enable_critical_alerts)
+            enable_critical_alerts: Boolean(row.enable_critical_alerts),
+            email_newsletter_enabled: Boolean(row.email_newsletter_enabled),
+            newsletter_email: row.newsletter_email || ''
           };
         }
       } catch (err) {
@@ -590,8 +592,8 @@ export const serverDb = {
         db.prepare(`
           INSERT INTO preferences (
             id, user_name, theme, categories, keywords, opportunity_types,
-            enable_daily_brief, enable_critical_alerts, updated_at
-          ) VALUES ('default', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            enable_daily_brief, enable_critical_alerts, email_newsletter_enabled, newsletter_email, updated_at
+          ) VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
           ON CONFLICT(id) DO UPDATE SET
             user_name=excluded.user_name,
             theme=excluded.theme,
@@ -600,6 +602,8 @@ export const serverDb = {
             opportunity_types=excluded.opportunity_types,
             enable_daily_brief=excluded.enable_daily_brief,
             enable_critical_alerts=excluded.enable_critical_alerts,
+            email_newsletter_enabled=excluded.email_newsletter_enabled,
+            newsletter_email=excluded.newsletter_email,
             updated_at=datetime('now')
         `).run(
           newPrefs.user_name || 'Balaji',
@@ -608,7 +612,9 @@ export const serverDb = {
           keywords,
           opportunityTypes,
           newPrefs.enable_daily_brief ? 1 : 0,
-          newPrefs.enable_critical_alerts ? 1 : 0
+          newPrefs.enable_critical_alerts ? 1 : 0,
+          newPrefs.email_newsletter_enabled ? 1 : 0,
+          newPrefs.newsletter_email || null
         );
         return serverDb.getPreferences();
       } catch (err) {
