@@ -5,11 +5,6 @@ interface __BaseEnv_Env {
 	tech_sentinel_db: D1Database;
 	ENVIRONMENT: "production";
 	CORS_ORIGIN: "https://tech-sentinel.pages.dev";
-	AI_PROVIDER: string;
-	GEMINI_API_KEY: string;
-	GROQ_API_KEY: string;
-	LOCAL_AI_BASE_URL: string;
-	LOCAL_AI_MODEL: string;
 	TELEGRAM_BOT_TOKEN: string;
 	TELEGRAM_CHAT_ID: string;
 	APP_BASE_URL: string;

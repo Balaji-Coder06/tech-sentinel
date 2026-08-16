@@ -18,7 +18,7 @@ from .processors.deduplicator import Deduplicator
 from .processors.opportunity_detector import OpportunityDetector
 from .processors.verifier import Verifier
 from .processors.scorer import Scorer
-from .ai import get_ai_provider, AISummarizer, DailyDigestGenerator
+from .ai import AISummarizer, DailyDigestGenerator, DeterministicEngine
 from .notifications.telegram import TelegramNotifier
 
 logging.basicConfig(
@@ -77,8 +77,7 @@ def run_processing(db: Database) -> Tuple[List[NewsItem], List[Opportunity]]:
     detector = OpportunityDetector()
     verifier = Verifier()
     scorer = Scorer()
-    ai_provider = get_ai_provider(settings.AI_PROVIDER)
-    summarizer = AISummarizer(ai_provider)
+    summarizer = AISummarizer()
     
     user_prefs_dict = db.get_preferences()
     user_prefs = UserPreferences(**user_prefs_dict) if user_prefs_dict else UserPreferences()
@@ -163,8 +162,7 @@ def run_nightly_report(db: Database, notify: bool = False):
     recent_news = db.get_recent_news(limit=25)
     active_opps = db.get_opportunities(limit=15)
 
-    ai_provider = get_ai_provider(settings.AI_PROVIDER)
-    generator = DailyDigestGenerator(ai_provider)
+    generator = DailyDigestGenerator()
     
     report = generator.generate(recent_news, active_opps)
     db.insert_report(report)

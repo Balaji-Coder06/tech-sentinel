@@ -1,25 +1,24 @@
 import re
 from typing import Dict, Any, List
-from .provider import BaseAIProvider
 from ..models import SentinelSummary
 
-class FallbackProvider(BaseAIProvider):
-    """Deterministic, zero-cost NLP and heuristic AI provider.
-    Ensures Tech Sentinel functions 100% reliably even without API keys or internet connection.
+class DeterministicEngine:
+    """Deterministic, local heuristic NLP processing engine.
+    Ensures Tech Sentinel functions 100% reliably and offline without external API keys or rate limits.
     """
 
     def generate_summary(self, title: str, content: str, category: str) -> SentinelSummary:
         # What happened: Clean primary sentence
         clean_title = re.sub(r'\[.*?\]|\(.*?\)', '', title).strip()
-        what = f"{clean_title}."
+        what = f"{clean_title}." if not clean_title.endswith(('.', '!', '?')) else clean_title
 
         # Why it matters: Category-specific contextual reasoning
         category_reasons = {
-            "ai": "Introduces new model capabilities and developer tooling to streamline pair-programming and AI integrations.",
+            "ai": "Introduces new developer capabilities and tooling to streamline pair-programming and machine learning workflows.",
             "cloud": "Provides scalable, cost-efficient infrastructure enhancements for deploying modern applications without vendor lock-in.",
             "development": "Streamlines engineering workflows, improves application performance, and reduces code boilerplate.",
             "open_source": "Expands open access tooling and community-driven repositories usable for commercial and personal projects.",
-            "cybersecurity": "Crucial security insights to harden infrastructure against emerging vulnerabilities and zero-day threats.",
+            "cybersecurity": "Crucial security insights to harden infrastructure against emerging vulnerabilities and threats.",
             "startups": "Key product launch updates and developer utilities to accelerate MVP delivery and market traction."
         }
         why = category_reasons.get(category.lower(), "Important technology update relevant to developers and engineering leaders.")
@@ -53,7 +52,7 @@ class FallbackProvider(BaseAIProvider):
             f"Found {opp_count} actionable free opportunities with direct claim links before deadlines expire."
         )
         sentinel_take = (
-            "Engineering velocity is accelerating with accessible AI tools and generous free tiers. "
+            "Engineering velocity is accelerating across open source tooling and cloud developer tiers. "
             "Prioritize claiming expiring cloud credits and certification vouchers today."
         )
 
@@ -62,3 +61,6 @@ class FallbackProvider(BaseAIProvider):
             "thirty_sec_summary": thirty_sec,
             "sentinel_take": sentinel_take
         }
+
+# Alias for backwards compatibility if needed
+DeterministicProvider = DeterministicEngine

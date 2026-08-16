@@ -284,7 +284,6 @@ class TestD1TelegramSync(unittest.TestCase):
             opportunity_types TEXT NOT NULL DEFAULT '[]',
             enable_daily_brief INTEGER NOT NULL DEFAULT 1,
             enable_critical_alerts INTEGER NOT NULL DEFAULT 1,
-            ai_provider TEXT DEFAULT 'fallback',
             updated_at TEXT NOT NULL
         );
         """)

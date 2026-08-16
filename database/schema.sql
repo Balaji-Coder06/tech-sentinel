@@ -142,7 +142,6 @@ CREATE TABLE IF NOT EXISTS preferences (
     enable_daily_brief INTEGER DEFAULT 1,
     enable_critical_alerts INTEGER DEFAULT 1,
     telegram_chat_id TEXT,
-    ai_provider TEXT DEFAULT 'fallback',
     updated_at TEXT DEFAULT (datetime('now'))
 );
 

@@ -24,9 +24,6 @@ jobs:
 
       - name: Run Collection, Processing & Production Sync
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'auto' }}
           WORKER_API_URL: ${{ secrets.WORKER_API_URL }}
           INGESTION_SECRET: ${{ secrets.INGESTION_SECRET }}
         run: |

@@ -1,7 +1,7 @@
 # 🛡️ Tech Sentinel
 
 > **Never miss what matters in tech.**  
-> *Personal AI-powered technology intelligence platform & "Free Before It's Gone" opportunity radar operating at ₹0 cost.*
+> *Personal technology intelligence platform & "Free Before It's Gone" opportunity radar operating at ₹0 cost.*
 
 ---
 
@@ -18,7 +18,7 @@ Every night at **9:00 PM IST**, Sentinel synthesizes everything collected into a
 Unlike conventional news aggregators, Tech Sentinel's core differentiator is **active opportunity detection**:
 
 - 💳 **Free Cloud Credits**: AWS, Google Cloud, Azure vouchers & activate credits.
-- 🤖 **AI API Credits & Tokens**: Free model access, Groq inference, Gemini Pro quotas.
+- 🤖 **Developer Credits & Sandbox Tiers**: Free developer tiers, cloud instances, and database clusters.
 - 🎓 **Student Packs & Certifications**: Microsoft exam vouchers, GitHub Student Pack benefits.
 - 💻 **Free Software & SaaS**: IDE features, database clusters, serverless tiers.
 - 🏆 **Hackathons & Internships**: High-reward competitions and developer challenges.
@@ -47,8 +47,8 @@ Every offer includes **expiration tracking** (🟢 Available, 🟠 Ends Soon, �
             │            │            │
             └────────────┼────────────┘
                          ↓
-                 🤖 AI ENGINE (₹0)
-         Gemini / Groq / Local / Fallback
+          ⚡ DETERMINISTIC ENGINE (₹0)
+         Local Offline Heuristic NLP
                          │
                          ↓
              🔐 POST /api/ingest (Auth Token)
@@ -78,7 +78,7 @@ Designed to run at **strict ₹0 infrastructure cost** utilizing free tiers and 
 | **Frontend UI** | Next.js 14 + TypeScript + Tailwind CSS | ₹0 |
 | **Design System** | GoRead Editorial Theme (#FF5A36 Coral) | ₹0 |
 | **Agent Pipeline** | Python 3.10 (httpx, feedparser, BeautifulSoup, Pydantic) | ₹0 |
-| **AI Processing** | Google Gemini 2.0 / Groq / Local Ollama / Deterministic NLP | ₹0 |
+| **Intelligence Engine**| Deterministic Local Heuristic NLP | ₹0 |
 | **Database** | Cloudflare D1 / Local SQLite | ₹0 |
 | **Edge API** | Cloudflare Workers | ₹0 |
 | **Scheduler** | GitHub Actions (Every 2 hours & Nightly 9 PM IST) | ₹0 |
@@ -91,7 +91,7 @@ Designed to run at **strict ₹0 infrastructure cost** utilizing free tiers and 
 ```text
 tech-sentinel/
 ├── agent/                    # 🐍 Python Intelligence Agent
-│   ├── ai/                   # AI Provider abstraction (Gemini, Groq, Local, Fallback)
+│   ├── ai/                   # Local deterministic engine & summarizer
 │   ├── collectors/           # Multi-source ingestion (RSS, GitHub, Official)
 │   ├── notifications/        # Telegram Bot HTML integration
 │   ├── processors/           # Classifier, Deduplicator, Opportunity Detector, Verifier, Scorer
@@ -163,9 +163,6 @@ python -m agent.main notify    # Dispatch Telegram brief
 Create a `.env` file based on `.env.example`:
 
 ```env
-AI_PROVIDER=fallback # options: fallback, gemini, groq, local
-GEMINI_API_KEY=your_gemini_api_key
-GROQ_API_KEY=your_groq_api_key
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 APP_BASE_URL=http://localhost:3000
@@ -204,7 +201,6 @@ INGESTION_SECRET=your_super_secret_token
    - `WORKER_API_URL`: URL of your deployed Cloudflare Worker
    - `INGESTION_SECRET`: Same secret configured in Cloudflare Workers
    - `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID`
-   - `GEMINI_API_KEY` or `GROQ_API_KEY` (Optional for AI providers)
 
 ---
 

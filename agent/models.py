@@ -108,7 +108,6 @@ class UserPreferences(BaseModel):
     enable_daily_brief: bool = True
     enable_critical_alerts: bool = True
     telegram_chat_id: Optional[str] = None
-    ai_provider: str = "fallback"
 
 class SystemStatus(BaseModel):
     id: str = "current"

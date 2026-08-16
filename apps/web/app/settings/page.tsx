@@ -15,8 +15,7 @@ export default function SettingsPage() {
     keywords: ['react', 'llm', 'credits', 'internship', 'certification', 'hackathon'],
     opportunity_types: ['software', 'ai_credits', 'cloud', 'education', 'certification', 'competition', 'career'],
     enable_daily_brief: true,
-    enable_critical_alerts: true,
-    ai_provider: 'fallback'
+    enable_critical_alerts: true
   });
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -192,43 +191,28 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Section 3: AI Engine Selection */}
+          {/* Section 3: Processing Engine */}
           <div className="p-6 rounded-3xl border border-sentinel-border bg-sentinel-card shadow-subtle space-y-4">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-sentinel-accent" />
                 <h3 className="font-extrabold text-sm text-sentinel-text uppercase tracking-wider">
-                  AI Intelligence Engine
+                  Intelligence Processing Engine
                 </h3>
               </div>
               <p className="text-xs text-sentinel-muted">
-                Choose which model provider powers your summarization & daily digest. All providers run within free-tier limits (₹0 cost).
+                Tech Sentinel runs 100% locally with high-performance deterministic NLP heuristics (₹0 cost / zero external API dependencies).
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              {[
-                { id: 'fallback', label: 'Deterministic NLP', sub: '₹0 Cost / No API Keys' },
-                { id: 'gemini', label: 'Google Gemini 2.0', sub: 'Free Tier API' },
-                { id: 'groq', label: 'Groq Llama 3.3', sub: 'Ultra Fast / Free Tier' },
-              ].map((p) => {
-                const isSelected = prefs.ai_provider === p.id;
-                return (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => setPrefs({ ...prefs, ai_provider: p.id })}
-                    className={`p-4 rounded-2xl border text-left space-y-1 transition-all ${
-                      isSelected
-                        ? 'border-sentinel-accent bg-sentinel-accent/10 ring-2 ring-sentinel-accent/20'
-                        : 'border-sentinel-border bg-sentinel-card hover:border-sentinel-border/80'
-                    }`}
-                  >
-                    <span className="font-bold text-xs text-sentinel-text block">{p.label}</span>
-                    <span className="text-[10px] text-sentinel-muted block">{p.sub}</span>
-                  </button>
-                );
-              })}
+            <div className="grid grid-cols-1 gap-3 pt-2">
+              <div className="p-4 rounded-2xl border border-sentinel-accent bg-sentinel-accent/10 ring-2 ring-sentinel-accent/20 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-sentinel-text block">Local Deterministic NLP</span>
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold">Active</span>
+                </div>
+                <span className="text-[10px] text-sentinel-muted block">Instantaneous offline extraction, scoring, and nightly intelligence reports</span>
+              </div>
             </div>
           </div>
 

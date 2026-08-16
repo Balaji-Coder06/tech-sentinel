@@ -24,9 +24,6 @@ jobs:
 
       - name: Generate Nightly Digest, Sync & Notify Telegram
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'fallback' }}
           WORKER_API_URL: ${{ secrets.WORKER_API_URL }}
           INGESTION_SECRET: ${{ secrets.INGESTION_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

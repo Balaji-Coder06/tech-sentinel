@@ -23,17 +23,6 @@ class Settings(BaseModel):
     WORKER_API_URL: str = os.getenv("WORKER_API_URL", "")  # e.g., https://tech-sentinel-api.your-subdomain.workers.dev
     INGESTION_SECRET: str = os.getenv("INGESTION_SECRET", "")  # Secret token shared between GH Actions & Worker
     
-    # AI Providers (Zero-cost / Free Tier first)
-    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "auto")  # options: auto, groq, gemini, local, fallback
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    LOCAL_AI_BASE_URL: str = os.getenv("LOCAL_AI_BASE_URL", "http://localhost:11434/v1")
-    LOCAL_AI_MODEL: str = os.getenv("LOCAL_AI_MODEL", "llama3.2")
-    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "2.0"))
-    AI_MAX_RETRIES: int = int(os.getenv("AI_MAX_RETRIES", "3"))
-    AI_RETRY_BASE_DELAY_SECONDS: float = float(os.getenv("AI_RETRY_BASE_DELAY_SECONDS", "2.0"))
-    AI_RETRY_MAX_DELAY_SECONDS: float = float(os.getenv("AI_RETRY_MAX_DELAY_SECONDS", "15.0"))
-    
     # Notifications
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")

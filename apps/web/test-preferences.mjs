@@ -27,7 +27,6 @@ function getPreferences() {
     categories: ['ai', 'cloud', 'development'],
     keywords: [],
     opportunity_types: ['ai_credits', 'cloud'],
-    ai_provider: 'fallback',
     enable_daily_brief: true,
     enable_critical_alerts: true
   };
@@ -39,9 +38,9 @@ function updatePreferences(prefs) {
   db.prepare(`
     INSERT INTO preferences (
       id, user_name, theme, categories, keywords, opportunity_types,
-      ai_provider, enable_daily_brief, enable_critical_alerts, updated_at
+      enable_daily_brief, enable_critical_alerts, updated_at
     ) VALUES (
-      'default', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
+      'default', ?, ?, ?, ?, ?, ?, ?, datetime('now')
     )
     ON CONFLICT(id) DO UPDATE SET
       user_name=excluded.user_name,
@@ -49,7 +48,6 @@ function updatePreferences(prefs) {
       categories=excluded.categories,
       keywords=excluded.keywords,
       opportunity_types=excluded.opportunity_types,
-      ai_provider=excluded.ai_provider,
       enable_daily_brief=excluded.enable_daily_brief,
       enable_critical_alerts=excluded.enable_critical_alerts,
       updated_at=datetime('now')
@@ -59,7 +57,6 @@ function updatePreferences(prefs) {
     JSON.stringify(merged.categories || []),
     JSON.stringify(merged.keywords || []),
     JSON.stringify(merged.opportunity_types || []),
-    merged.ai_provider || 'fallback',
     merged.enable_daily_brief ? 1 : 0,
     merged.enable_critical_alerts ? 1 : 0
   );
@@ -84,7 +81,6 @@ function updatePreferences(prefs) {
     categories: ['ai'],
     keywords: ['llm', 'agent', 'transformer'],
     opportunity_types: ['ai_credits', 'certification'],
-    ai_provider: 'gemini',
     enable_daily_brief: true,
     enable_critical_alerts: true
   });
@@ -92,13 +88,11 @@ function updatePreferences(prefs) {
   assert.equal(updated.user_name, 'Balaji Coder');
   assert.deepEqual(updated.categories, ['ai']);
   assert.deepEqual(updated.opportunity_types, ['ai_credits', 'certification']);
-  assert.equal(updated.ai_provider, 'gemini');
 
   // Verify persistence by reading directly from SQLite with a new DB connection
   const directDb = new DatabaseSync('../../database/tech_sentinel.db');
   const row = directDb.prepare("SELECT * FROM preferences WHERE id = 'default'").get();
   assert.equal(row.user_name, 'Balaji Coder');
-  assert.equal(row.ai_provider, 'gemini');
   assert.deepEqual(JSON.parse(row.categories), ['ai']);
   assert.deepEqual(JSON.parse(row.opportunity_types), ['ai_credits', 'certification']);
 
@@ -179,7 +173,6 @@ function updatePreferences(prefs) {
     categories: ['ai', 'cloud', 'development', 'open_source', 'cybersecurity', 'startups'],
     keywords: [],
     opportunity_types: ['ai_credits', 'cloud', 'certification', 'software', 'competition', 'education', 'career'],
-    ai_provider: 'fallback',
     enable_daily_brief: true,
     enable_critical_alerts: true
   });

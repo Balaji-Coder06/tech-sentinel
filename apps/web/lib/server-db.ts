@@ -590,8 +590,8 @@ export const serverDb = {
         db.prepare(`
           INSERT INTO preferences (
             id, user_name, theme, categories, keywords, opportunity_types,
-            enable_daily_brief, enable_critical_alerts, ai_provider, updated_at
-          ) VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            enable_daily_brief, enable_critical_alerts, updated_at
+          ) VALUES ('default', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
           ON CONFLICT(id) DO UPDATE SET
             user_name=excluded.user_name,
             theme=excluded.theme,
@@ -600,7 +600,6 @@ export const serverDb = {
             opportunity_types=excluded.opportunity_types,
             enable_daily_brief=excluded.enable_daily_brief,
             enable_critical_alerts=excluded.enable_critical_alerts,
-            ai_provider=excluded.ai_provider,
             updated_at=datetime('now')
         `).run(
           newPrefs.user_name || 'Balaji',
@@ -609,8 +608,7 @@ export const serverDb = {
           keywords,
           opportunityTypes,
           newPrefs.enable_daily_brief ? 1 : 0,
-          newPrefs.enable_critical_alerts ? 1 : 0,
-          newPrefs.ai_provider || 'fallback'
+          newPrefs.enable_critical_alerts ? 1 : 0
         );
         return serverDb.getPreferences();
       } catch (err) {

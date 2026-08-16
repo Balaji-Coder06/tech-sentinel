@@ -289,23 +289,19 @@ This separation is intentional.
 
 ---
 
-## 13. AI Provider Architecture
+## 13. Processing Engine Architecture
 
-Do not hard-code Tech Sentinel to one AI provider.
-
-Use an abstraction:
+Tech Sentinel uses a deterministic local processing engine:
 
 ```text
-AIProvider
+DeterministicProvider
     │
-    ├── GeminiProvider
-    ├── GroqProvider
-    └── LocalProvider
+    ├── Local Heuristic NLP
+    ├── Sentence & Key Point Extractor
+    └── Deterministic Nightly Synthesizer
 ```
 
-The provider should be switchable through configuration.
-
-This protects the project from changes in free-tier limits and provider availability.
+This ensures complete offline reliability without external API keys or rate limits.
 
 ---
 
@@ -611,9 +607,9 @@ tech-sentinel/
 │   │
 │   ├── ai/
 │   │   ├── provider.py
-│   │   ├── gemini.py
-│   │   ├── groq.py
-│   │   └── local.py
+│   │   ├── fallback_provider.py
+│   │   ├── summarizer.py
+│   │   └── digest_generator.py
 │   │
 │   └── main.py
 │
@@ -679,12 +675,10 @@ Cloudflare D1
 GitHub Actions
 ```
 
-### AI
+### Intelligence Engine
 
 ```text
-Gemini / Groq
-+
-Local model fallback
+Deterministic Local Heuristic NLP
 ```
 
 ### Notifications

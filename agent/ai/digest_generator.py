@@ -1,14 +1,13 @@
-import uuid
-from datetime import datetime
-from typing import List, Dict, Any
-from .provider import BaseAIProvider
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
+from .fallback_provider import DeterministicEngine
 from ..models import DailyReport
 
 class DailyDigestGenerator:
     """Consolidates news, opportunities, and rankings into the signature Nightly Intelligence Report."""
 
-    def __init__(self, provider: BaseAIProvider):
-        self.provider = provider
+    def __init__(self, engine: Optional[DeterministicEngine] = None):
+        self.engine = engine or DeterministicEngine()
 
     def generate(
         self,
@@ -16,7 +15,7 @@ class DailyDigestGenerator:
         opportunities: List[Dict[str, Any]],
         target_date: str = None
     ) -> DailyReport:
-        date_str = target_date or datetime.utcnow().strftime("%Y-%m-%d")
+        date_str = target_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         # 1. Rank & select top items
         sorted_news = sorted(news_items, key=lambda x: x.get("importance_score", 0), reverse=True)
@@ -68,8 +67,8 @@ class DailyDigestGenerator:
             for n in sorted_news if n.get("category") == "open_source"
         ][:3]
 
-        # 2. AI synthesis for headline, 30s summary, and Sentinel's Take
-        ai_resp = self.provider.generate_daily_digest(sorted_news, sorted_opps)
+        # 2. Heuristic synthesis for headline, 30s summary, and Sentinel's Take
+        ai_resp = self.engine.generate_daily_digest(sorted_news, sorted_opps)
 
         report_id = f"rep_{date_str.replace('-', '_')}"
 

@@ -1,14 +1,15 @@
-from .provider import BaseAIProvider
+from typing import Optional
+from .fallback_provider import DeterministicEngine
 from ..models import RawItem, SentinelSummary
 
 class AISummarizer:
-    """Wrapper that invokes configured AI provider to produce Sentinel summaries."""
+    """Produces signature Sentinel summaries using the deterministic NLP engine."""
 
-    def __init__(self, provider: BaseAIProvider):
-        self.provider = provider
+    def __init__(self, engine: Optional[DeterministicEngine] = None):
+        self.engine = engine or DeterministicEngine()
 
     def summarize(self, item: RawItem) -> SentinelSummary:
-        return self.provider.generate_summary(
+        return self.engine.generate_summary(
             title=item.title,
             content=item.content or item.description,
             category=item.category or "development"

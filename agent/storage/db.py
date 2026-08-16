@@ -175,6 +175,43 @@ class Database:
                 except Exception:
                     pass
 
+            # 7. Idempotently migrate preferences table to remove legacy ai_provider column
+            try:
+                pref_table = cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='preferences'").fetchone()
+                if pref_table:
+                    columns_info = cursor.execute("PRAGMA table_info(preferences)").fetchall()
+                    column_names = [col[1] for col in columns_info]
+                    if "ai_provider" in column_names:
+                        sqlite_ver = sqlite3.sqlite_version_info
+                        if sqlite_ver >= (3, 35, 0):
+                            cursor.execute("ALTER TABLE preferences DROP COLUMN ai_provider;")
+                            logger.info("Successfully dropped legacy ai_provider column from preferences table.")
+                        else:
+                            cursor.execute("""
+                            CREATE TABLE preferences_new (
+                                id TEXT PRIMARY KEY DEFAULT 'default',
+                                user_name TEXT DEFAULT 'Balaji',
+                                theme TEXT DEFAULT 'system',
+                                categories TEXT DEFAULT '["ai", "cloud", "development", "open_source", "cybersecurity", "startups"]',
+                                keywords TEXT DEFAULT '["react", "llm", "credits", "internship", "certification", "hackathon", "copilot"]',
+                                opportunity_types TEXT DEFAULT '["software", "ai_credits", "cloud", "education", "certification", "competition", "career"]',
+                                enable_daily_brief INTEGER DEFAULT 1,
+                                enable_critical_alerts INTEGER DEFAULT 1,
+                                telegram_chat_id TEXT,
+                                updated_at TEXT DEFAULT (datetime('now'))
+                            );
+                            """)
+                            cursor.execute("""
+                            INSERT INTO preferences_new (id, user_name, theme, categories, keywords, opportunity_types, enable_daily_brief, enable_critical_alerts, telegram_chat_id, updated_at)
+                            SELECT id, user_name, theme, categories, keywords, opportunity_types, enable_daily_brief, enable_critical_alerts, telegram_chat_id, updated_at
+                            FROM preferences;
+                            """)
+                            cursor.execute("DROP TABLE preferences;")
+                            cursor.execute("ALTER TABLE preferences_new RENAME TO preferences;")
+                            logger.info("Successfully migrated preferences table without ai_provider.")
+            except Exception as e:
+                logger.warning(f"Note during preferences migration: {e}")
+
             # Check if news table is empty -> seed
             cursor.execute("SELECT COUNT(*) FROM news")
             count = cursor.fetchone()[0]
@@ -182,6 +219,8 @@ class Database:
                 with open(seed_path, "r", encoding="utf-8") as f:
                     conn.executescript(f.read())
                 logger.info("Initialized database with seed data.")
+
+    init_db = init_schema
 
     # -------------------------------------------------------------
     # Raw Items Staging Operations (Decouples Collect & Process)
@@ -518,11 +557,12 @@ class Database:
                     "keywords": ["react", "llm", "credits", "internship", "certification", "hackathon", "copilot"],
                     "opportunity_types": ["software", "ai_credits", "cloud", "education", "certification", "competition", "career"],
                     "enable_daily_brief": True,
-                    "enable_critical_alerts": True,
-                    "ai_provider": "fallback"
+                    "enable_critical_alerts": True
                 }
 
             preferences = dict(row)
+            # Remove legacy field if present in SQLite row dict
+            preferences.pop("ai_provider", None)
             for field in ["categories", "keywords", "opportunity_types"]:
                 if isinstance(preferences.get(field), str):
                     try:
@@ -537,8 +577,8 @@ class Database:
         query = """
         INSERT INTO preferences (
             id, user_name, theme, categories, keywords, opportunity_types,
-            enable_daily_brief, enable_critical_alerts, ai_provider, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            enable_daily_brief, enable_critical_alerts, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(id) DO UPDATE SET
             user_name=excluded.user_name,
             theme=excluded.theme,
@@ -547,7 +587,6 @@ class Database:
             opportunity_types=excluded.opportunity_types,
             enable_daily_brief=excluded.enable_daily_brief,
             enable_critical_alerts=excluded.enable_critical_alerts,
-            ai_provider=excluded.ai_provider,
             updated_at=datetime('now')
         """
         categories = json.dumps(prefs.get("categories", []))
@@ -562,8 +601,7 @@ class Database:
                     prefs.get("theme", "system"),
                     categories, keywords, opportunity_types,
                     1 if prefs.get("enable_daily_brief", True) else 0,
-                    1 if prefs.get("enable_critical_alerts", True) else 0,
-                    prefs.get("ai_provider", "fallback")
+                    1 if prefs.get("enable_critical_alerts", True) else 0
                 ))
                 return True
             except Exception as e:
