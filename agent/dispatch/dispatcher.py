@@ -183,8 +183,17 @@ class UnifiedDispatcher:
 
     def _dispatch_email(self, report: DailyReport, stats: Dict[str, Any], force: bool = False):
         """Dispatches to explicitly opted-in Email newsletter subscribers with idempotency checks."""
-        # Query opted-in email preferences from local SQLite (and D1 synced preferences)
-        email_subscribers = self.db.get_email_subscribers()
+        # Query opted-in email preferences from Cloudflare D1 if configured, fallback to local SQLite
+        email_subscribers: List[Dict[str, Any]] = []
+        if self.d1_client.is_configured:
+            try:
+                email_subscribers = self.d1_client.get_email_subscribers()
+            except Exception as err:
+                logger.warning(f"Note fetching email subscribers from D1: {err}")
+                email_subscribers = self.db.get_email_subscribers()
+        else:
+            email_subscribers = self.db.get_email_subscribers()
+
         stats["email"]["candidates"] = len(email_subscribers)
 
         if not email_subscribers:

@@ -11,6 +11,48 @@ export interface Env {
   INGESTION_SECRET?: string;
 }
 
+async function ensureSchema(db?: D1Database): Promise<void> {
+  if (!db) return;
+  try {
+    const tableInfo = await db.prepare("PRAGMA table_info(preferences)").all();
+    const columns = new Set((tableInfo.results || []).map((col: any) => col.name));
+
+    if (!columns.has('email_newsletter_enabled')) {
+      try {
+        await db.exec("ALTER TABLE preferences ADD COLUMN email_newsletter_enabled INTEGER DEFAULT 0;");
+      } catch (e) {}
+    }
+    if (!columns.has('newsletter_email')) {
+      try {
+        await db.exec("ALTER TABLE preferences ADD COLUMN newsletter_email TEXT;");
+      } catch (e) {}
+    }
+    if (!columns.has('last_email_sent_at')) {
+      try {
+        await db.exec("ALTER TABLE preferences ADD COLUMN last_email_sent_at TEXT;");
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.warn("Schema check warning on preferences:", err);
+  }
+
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS delivery_logs (
+        id TEXT PRIMARY KEY,
+        report_id TEXT NOT NULL,
+        report_date TEXT NOT NULL,
+        channel TEXT NOT NULL CHECK(channel IN ('telegram', 'email')),
+        recipient_id TEXT NOT NULL,
+        status TEXT NOT NULL CHECK(status IN ('DELIVERED', 'FAILED')),
+        delivered_at TEXT NOT NULL DEFAULT (datetime('now')),
+        metadata TEXT,
+        UNIQUE(report_date, channel, recipient_id)
+      );
+    `);
+  } catch (err) {}
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (!env.DB && env.tech_sentinel_db) {
@@ -32,6 +74,9 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers });
     }
+
+    // Ensure D1 database schema is up-to-date with non-destructive migrations
+    await ensureSchema(env.DB);
 
     try {
       // -------------------------------------------------------------
@@ -406,6 +451,47 @@ export default {
             updated_at: u.updated_at
           };
         });
+
+        return new Response(JSON.stringify({
+          success: true,
+          count: subscribers.length,
+          data: subscribers
+        }), { headers });
+      }
+
+      // -------------------------------------------------------------
+      // 0c. SECURE EMAIL NEWSLETTER SUBSCRIBERS ENDPOINT: GET /api/email/subscribers
+      // -------------------------------------------------------------
+      if (path === '/api/email/subscribers' && request.method === 'GET') {
+        const authHeader = request.headers.get('Authorization') || '';
+        const token = authHeader.replace(/^Bearer\s+/i, '');
+
+        if (!env.INGESTION_SECRET || token !== env.INGESTION_SECRET) {
+          return new Response(JSON.stringify({ error: 'Unauthorized: Invalid Token' }), {
+            status: 401,
+            headers
+          });
+        }
+
+        const prefsStmt = env.DB.prepare(`
+          SELECT * FROM preferences 
+          WHERE email_newsletter_enabled = 1 
+            AND newsletter_email IS NOT NULL 
+            AND TRIM(newsletter_email) != ''
+          ORDER BY updated_at ASC
+        `);
+        const { results } = await prefsStmt.all();
+        const subscribers = (results || []).map((p: any) => ({
+          ...p,
+          email: p.newsletter_email,
+          newsletter_email: p.newsletter_email,
+          email_newsletter_enabled: Boolean(p.email_newsletter_enabled),
+          categories: typeof p.categories === 'string' ? JSON.parse(p.categories || '[]') : p.categories,
+          keywords: typeof p.keywords === 'string' ? JSON.parse(p.keywords || '[]') : p.keywords,
+          opportunity_types: typeof p.opportunity_types === 'string' ? JSON.parse(p.opportunity_types || '[]') : p.opportunity_types,
+          enable_daily_brief: Boolean(p.enable_daily_brief),
+          enable_critical_alerts: Boolean(p.enable_critical_alerts),
+        }));
 
         return new Response(JSON.stringify({
           success: true,

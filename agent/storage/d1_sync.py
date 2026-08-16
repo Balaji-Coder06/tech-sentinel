@@ -130,3 +130,37 @@ class D1SyncClient:
         except Exception as e:
             logger.error(f"❌ Exception fetching subscribers from Cloudflare D1: {e}")
             return []
+
+    def get_email_subscribers(self) -> List[Dict[str, Any]]:
+        """
+        Securely fetches opted-in email newsletter subscribers and their preferences
+        from Cloudflare D1 via the Worker API.
+        """
+        if not self.is_configured:
+            logger.warning("Cloudflare Worker URL / Ingestion Secret not configured. Cannot fetch D1 email subscribers.")
+            return []
+
+        endpoint = f"{self.worker_url}/api/email/subscribers"
+        headers = {
+            "Authorization": f"Bearer {self.secret}",
+            "Content-Type": "application/json",
+            "User-Agent": settings.USER_AGENT
+        }
+
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                res = client.get(endpoint, headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    subscribers = data.get("data", [])
+                    logger.info(f"✅ Retrieved {len(subscribers)} opted-in email subscribers from Cloudflare D1.")
+                    return subscribers
+                elif res.status_code == 401:
+                    logger.error("❌ Cloudflare D1 email subscribers query unauthorized: Invalid Ingestion Secret.")
+                    return []
+                else:
+                    logger.error(f"❌ Failed to fetch email subscribers from D1 (HTTP {res.status_code}): {res.text}")
+                    return []
+        except Exception as e:
+            logger.error(f"❌ Exception fetching email subscribers from Cloudflare D1: {e}")
+            return []
