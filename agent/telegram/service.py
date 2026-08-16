@@ -262,9 +262,12 @@ class TelegramBotService:
             # Synchronize updated Telegram users & preferences to Cloudflare D1 if configured
             d1_client = D1SyncClient()
             if d1_client.is_configured:
+                logger.info(f"🔄 [START COMMAND] Syncing user {resolved_user_id} to Cloudflare D1...")
                 users = self.db.get_all_telegram_users()
                 prefs = self.db.get_all_preferences()
                 d1_client.sync_telegram_data(users=users, preferences=prefs)
+            else:
+                logger.warning(f"⚠️ [START COMMAND] Remote D1 sync skipped: D1SyncClient is not configured in .env.")
         except Exception as e:
             logger.error(f"Error registering Telegram user {resolved_user_id}: {e}")
 
@@ -629,12 +632,20 @@ class TelegramBotService:
 
         if clean_arg == "on":
             self.db.set_telegram_digest_subscription(resolved_user_id, enabled=True)
+            logger.info(f"🔔 [DIGEST ON] User {resolved_user_id} enabled daily digest in SQLite.")
             # Sync to D1 if configured
             d1_client = D1SyncClient()
             if d1_client.is_configured:
+                logger.info(f"🔄 [DIGEST ON] Syncing updated subscription to Cloudflare D1 for user {resolved_user_id}...")
                 users = self.db.get_all_telegram_users()
                 prefs = self.db.get_all_preferences()
-                d1_client.sync_telegram_data(users=users, preferences=prefs)
+                synced = d1_client.sync_telegram_data(users=users, preferences=prefs)
+                if synced:
+                    logger.info(f"✅ [DIGEST ON] Cloudflare D1 sync completed successfully.")
+                else:
+                    logger.warning(f"⚠️ [DIGEST ON] Cloudflare D1 sync failed.")
+            else:
+                logger.warning(f"⚠️ [DIGEST ON] Remote D1 sync skipped: D1SyncClient is not configured (WORKER_API_URL / INGESTION_SECRET missing in .env).")
 
             msg = (
                 "✅ <b>Daily Digest Subscribed!</b>\n\n"
@@ -646,12 +657,20 @@ class TelegramBotService:
 
         elif clean_arg == "off":
             self.db.set_telegram_digest_subscription(resolved_user_id, enabled=False)
+            logger.info(f"🔕 [DIGEST OFF] User {resolved_user_id} disabled daily digest in SQLite.")
             # Sync to D1 if configured
             d1_client = D1SyncClient()
             if d1_client.is_configured:
+                logger.info(f"🔄 [DIGEST OFF] Syncing subscription removal to Cloudflare D1 for user {resolved_user_id}...")
                 users = self.db.get_all_telegram_users()
                 prefs = self.db.get_all_preferences()
-                d1_client.sync_telegram_data(users=users, preferences=prefs)
+                synced = d1_client.sync_telegram_data(users=users, preferences=prefs)
+                if synced:
+                    logger.info(f"✅ [DIGEST OFF] Cloudflare D1 sync completed successfully.")
+                else:
+                    logger.warning(f"⚠️ [DIGEST OFF] Cloudflare D1 sync failed.")
+            else:
+                logger.warning(f"⚠️ [DIGEST OFF] Remote D1 sync skipped: D1SyncClient is not configured in .env.")
 
             msg = (
                 "🛑 <b>Daily Digest Unsubscribed.</b>\n\n"

@@ -220,6 +220,15 @@ class TestTelegramBotService(unittest.TestCase):
             self.assertTrue(bot.process_command("/start", "12345", user_name="Balaji", user_id="12345"))
             self.assertIn("Welcome to Tech Sentinel", mock_send.call_args[1]["text"])
 
+            self.assertTrue(bot.process_command("/digest on", "12345", user_id="12345"))
+            self.assertIn("Daily Digest Subscribed", mock_send.call_args[1]["text"])
+
+            self.assertTrue(bot.process_command("/digest off", "12345", user_id="12345"))
+            self.assertIn("Daily Digest Unsubscribed", mock_send.call_args[1]["text"])
+
+            self.assertTrue(bot.process_command("/digest", "12345", user_id="12345"))
+            self.assertIn("DAILY DIGEST SETTINGS", mock_send.call_args[1]["text"])
+
     def test_format_time_ago(self):
         self.assertEqual(format_time_ago(None), "recently")
         self.assertEqual(format_time_ago("invalid-date"), "recently")

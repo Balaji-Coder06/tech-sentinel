@@ -4,7 +4,8 @@
  */
 
 export interface Env {
-  DB: D1Database;
+  DB?: D1Database;
+  tech_sentinel_db?: D1Database;
   ENVIRONMENT: string;
   CORS_ORIGIN?: string;
   INGESTION_SECRET?: string;
@@ -12,6 +13,10 @@ export interface Env {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    if (!env.DB && env.tech_sentinel_db) {
+      env.DB = env.tech_sentinel_db;
+    }
+
     const url = new URL(request.url);
     const path = url.pathname;
     const origin = request.headers.get('Origin') || '*';
@@ -48,10 +53,98 @@ export default {
         const opportunities = body.opportunities || [];
         const report = body.report;
         const status = body.status;
+        const telegramUsers = body.telegram_users || [];
+        const preferencesList = body.preferences || [];
 
         const statements: D1PreparedStatement[] = [];
 
-        // Ingest News Items
+        // 1. Ingest Preferences Profiles FIRST (Parent table with foreign key constraint)
+        const validPrefIds = new Set<string>(['default']);
+
+        // Always guarantee default preferences row exists
+        statements.push(
+          env.DB.prepare(`
+            INSERT INTO preferences (
+              id, user_name, theme, categories, keywords, opportunity_types,
+              enable_daily_brief, enable_critical_alerts, ai_provider, updated_at
+            ) VALUES (
+              'default', 'Balaji', 'system',
+              '["ai","cloud","development","open_source","cybersecurity","startups"]',
+              '["react","llm","credits","internship","certification","hackathon","copilot"]',
+              '["software","ai_credits","cloud","education","certification","competition","career"]',
+              1, 1, 'fallback', datetime('now')
+            )
+            ON CONFLICT(id) DO NOTHING
+          `)
+        );
+
+        for (const pref of preferencesList) {
+          const prefId = pref.id || 'default';
+          validPrefIds.add(prefId);
+          const categories = typeof pref.categories === 'string' ? pref.categories : JSON.stringify(pref.categories || []);
+          const keywords = typeof pref.keywords === 'string' ? pref.keywords : JSON.stringify(pref.keywords || []);
+          const opportunityTypes = typeof pref.opportunity_types === 'string' ? pref.opportunity_types : JSON.stringify(pref.opportunity_types || []);
+
+          statements.push(
+            env.DB.prepare(`
+              INSERT INTO preferences (
+                id, user_name, theme, categories, keywords, opportunity_types,
+                enable_daily_brief, enable_critical_alerts, ai_provider, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+              ON CONFLICT(id) DO UPDATE SET
+                user_name=excluded.user_name,
+                theme=excluded.theme,
+                categories=excluded.categories,
+                keywords=excluded.keywords,
+                opportunity_types=excluded.opportunity_types,
+                enable_daily_brief=excluded.enable_daily_brief,
+                enable_critical_alerts=excluded.enable_critical_alerts,
+                ai_provider=excluded.ai_provider,
+                updated_at=datetime('now')
+            `).bind(
+              prefId,
+              pref.user_name || 'Balaji',
+              pref.theme || 'system',
+              categories,
+              keywords,
+              opportunityTypes,
+              pref.enable_daily_brief ? 1 : 0,
+              pref.enable_critical_alerts ? 1 : 0,
+              pref.ai_provider || 'fallback'
+            )
+          );
+        }
+
+        // 2. Ingest Telegram Users SECOND (Foreign key child table referencing preferences(id))
+        for (const user of telegramUsers) {
+          const isDigestEnabled = (user.telegram_digest_enabled === 1 || user.telegram_digest_enabled === true || user.telegram_digest_enabled === '1' || user.telegram_digest_enabled === 'true') ? 1 : 0;
+          const assignedPrefId = (user.preference_id && validPrefIds.has(user.preference_id)) ? user.preference_id : 'default';
+
+          statements.push(
+            env.DB.prepare(`
+              INSERT INTO telegram_users (
+                user_id, chat_id, username, first_name, last_name, preference_id,
+                telegram_digest_enabled, last_digest_sent_at, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(user_id) DO UPDATE SET
+                chat_id=excluded.chat_id,
+                username=COALESCE(excluded.username, telegram_users.username),
+                first_name=COALESCE(excluded.first_name, telegram_users.first_name),
+                last_name=COALESCE(excluded.last_name, telegram_users.last_name),
+                preference_id=excluded.preference_id,
+                telegram_digest_enabled=excluded.telegram_digest_enabled,
+                last_digest_sent_at=COALESCE(excluded.last_digest_sent_at, telegram_users.last_digest_sent_at),
+                updated_at=datetime('now')
+            `).bind(
+              String(user.user_id), String(user.chat_id), user.username || null,
+              user.first_name || null, user.last_name || null, assignedPrefId,
+              isDigestEnabled, user.last_digest_sent_at || null,
+              user.created_at || new Date().toISOString(), user.updated_at || new Date().toISOString()
+            )
+          );
+        }
+
+        // 3. Ingest News Items
         for (const item of newsItems) {
           const summaryWhat = item.summary?.what || null;
           const summaryWhy = item.summary?.why || null;
@@ -93,7 +186,7 @@ export default {
           );
         }
 
-        // Ingest Opportunities
+        // 4. Ingest Opportunities
         for (const opp of opportunities) {
           statements.push(
             env.DB.prepare(`
@@ -132,7 +225,7 @@ export default {
           );
         }
 
-        // Ingest Daily Report
+        // 5. Ingest Daily Report
         if (report) {
           statements.push(
             env.DB.prepare(`
@@ -164,7 +257,7 @@ export default {
           );
         }
 
-        // Update System Status
+        // 6. Update System Status
         if (status) {
           statements.push(
             env.DB.prepare(`
@@ -186,70 +279,6 @@ export default {
               status.new_opportunities_today || opportunities.length,
               status.last_run_duration_sec || 0.0,
               status.last_error || null
-            )
-          );
-        }
-
-        // Ingest Telegram Users
-        const telegramUsers = body.telegram_users || [];
-        for (const user of telegramUsers) {
-          statements.push(
-            env.DB.prepare(`
-              INSERT INTO telegram_users (
-                user_id, chat_id, username, first_name, last_name, preference_id,
-                telegram_digest_enabled, last_digest_sent_at, created_at, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              ON CONFLICT(user_id) DO UPDATE SET
-                chat_id=excluded.chat_id,
-                username=COALESCE(excluded.username, telegram_users.username),
-                first_name=COALESCE(excluded.first_name, telegram_users.first_name),
-                last_name=COALESCE(excluded.last_name, telegram_users.last_name),
-                preference_id=excluded.preference_id,
-                telegram_digest_enabled=COALESCE(excluded.telegram_digest_enabled, telegram_users.telegram_digest_enabled),
-                last_digest_sent_at=COALESCE(excluded.last_digest_sent_at, telegram_users.last_digest_sent_at),
-                updated_at=datetime('now')
-            `).bind(
-              String(user.user_id), String(user.chat_id), user.username || null,
-              user.first_name || null, user.last_name || null, user.preference_id || 'default',
-              user.telegram_digest_enabled ? 1 : 0, user.last_digest_sent_at || null,
-              user.created_at || new Date().toISOString(), user.updated_at || new Date().toISOString()
-            )
-          );
-        }
-
-        // Ingest Preferences Profiles
-        const preferencesList = body.preferences || [];
-        for (const pref of preferencesList) {
-          const categories = typeof pref.categories === 'string' ? pref.categories : JSON.stringify(pref.categories || []);
-          const keywords = typeof pref.keywords === 'string' ? pref.keywords : JSON.stringify(pref.keywords || []);
-          const opportunityTypes = typeof pref.opportunity_types === 'string' ? pref.opportunity_types : JSON.stringify(pref.opportunity_types || []);
-
-          statements.push(
-            env.DB.prepare(`
-              INSERT INTO preferences (
-                id, user_name, theme, categories, keywords, opportunity_types,
-                enable_daily_brief, enable_critical_alerts, ai_provider, updated_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-              ON CONFLICT(id) DO UPDATE SET
-                user_name=excluded.user_name,
-                theme=excluded.theme,
-                categories=excluded.categories,
-                keywords=excluded.keywords,
-                opportunity_types=excluded.opportunity_types,
-                enable_daily_brief=excluded.enable_daily_brief,
-                enable_critical_alerts=excluded.enable_critical_alerts,
-                ai_provider=excluded.ai_provider,
-                updated_at=datetime('now')
-            `).bind(
-              pref.id || 'default',
-              pref.user_name || 'Balaji',
-              pref.theme || 'system',
-              categories,
-              keywords,
-              opportunityTypes,
-              pref.enable_daily_brief ? 1 : 0,
-              pref.enable_critical_alerts ? 1 : 0,
-              pref.ai_provider || 'fallback'
             )
           );
         }

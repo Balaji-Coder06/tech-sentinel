@@ -31,15 +31,25 @@ class D1SyncClient:
         preferences: Optional[List[Dict[str, Any]]] = None
     ) -> bool:
         if not self.is_configured:
-            logger.info("Cloudflare Worker ingestion URL / secret not set. Skipping remote D1 sync.")
+            logger.warning(
+                f"⚠️ Cloudflare D1 sync skipped: WORKER_API_URL ({'configured' if self.worker_url else 'missing'}) "
+                f"or INGESTION_SECRET ({'configured' if self.secret else 'missing'}) is not set in environment/.env."
+            )
             return False
+
+        formatted_users = []
+        for u in (telegram_users or []):
+            u_copy = dict(u)
+            is_enabled = 1 if u_copy.get("telegram_digest_enabled") in (1, True, "1", "true") else 0
+            u_copy["telegram_digest_enabled"] = is_enabled
+            formatted_users.append(u_copy)
 
         payload: Dict[str, Any] = {
             "news": [n.model_dump() for n in news] if news else [],
             "opportunities": [o.model_dump() for o in opportunities] if opportunities else [],
             "report": report.model_dump() if report else None,
             "status": status.model_dump() if status else None,
-            "telegram_users": telegram_users or [],
+            "telegram_users": formatted_users,
             "preferences": preferences or []
         }
 
@@ -52,21 +62,28 @@ class D1SyncClient:
 
         try:
             logger.info(
-                f"🚀 Pushing data to Cloudflare D1 ({len(payload['news'])} news, "
-                f"{len(payload['opportunities'])} opps, {len(payload['telegram_users'])} users, "
-                f"{len(payload['preferences'])} prefs)..."
+                f"🚀 [D1 SYNC] Initiating push to {self.worker_url}/api/ingest: "
+                f"{len(payload['news'])} news, {len(payload['opportunities'])} opps, "
+                f"{len(payload['telegram_users'])} users, {len(payload['preferences'])} prefs"
             )
+            for u in formatted_users:
+                logger.info(
+                    f"   👤 [D1 SYNC USER] user_id={u.get('user_id')}, chat_id={u.get('chat_id')}, "
+                    f"telegram_digest_enabled={u.get('telegram_digest_enabled')}"
+                )
+
             with httpx.Client(timeout=30.0) as client:
                 res = client.post(endpoint, json=payload, headers=headers)
+                logger.info(f"📡 [D1 SYNC RESPONSE] HTTP Status: {res.status_code}")
                 if res.status_code == 200:
                     data = res.json()
-                    logger.info(f"✅ Successfully synchronized with Cloudflare D1: {data.get('message', 'OK')}")
+                    logger.info(f"✅ [D1 SYNC SUCCESS] Worker response: {data.get('message', 'OK')}")
                     return True
                 else:
-                    logger.error(f"❌ D1 sync failed (HTTP {res.status_code}): {res.text}")
+                    logger.error(f"❌ [D1 SYNC ERROR] HTTP {res.status_code}: {res.text[:300]}")
                     return False
         except Exception as e:
-            logger.error(f"❌ Exception during D1 synchronization: {e}")
+            logger.error(f"❌ [D1 SYNC EXCEPTION] {e}")
             return False
 
     def sync_telegram_data(
