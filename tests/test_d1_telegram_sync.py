@@ -346,5 +346,56 @@ class TestD1TelegramSync(unittest.TestCase):
 
         mem_conn.close()
 
+    def test_sources_and_news_foreign_key_ordering(self):
+        """10. Regression Test: Ingesting sources before news satisfies FK constraints and allows independent ingestion."""
+        mem_conn = sqlite3.connect(":memory:")
+        mem_conn.execute("PRAGMA foreign_keys = ON;")
+
+        # Create sources and news tables
+        mem_conn.execute("""
+        CREATE TABLE sources (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL UNIQUE,
+            type TEXT NOT NULL DEFAULT 'rss',
+            category TEXT NOT NULL DEFAULT 'tech'
+        );
+        """)
+
+        mem_conn.execute("""
+        CREATE TABLE news (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL UNIQUE,
+            source_id TEXT,
+            source_name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            published_at TEXT NOT NULL,
+            FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL
+        );
+        """)
+
+        # Attempt 1: Inserting news with unseeded source_id fails under foreign keys
+        with self.assertRaises(sqlite3.IntegrityError):
+            mem_conn.execute(
+                "INSERT INTO news (id, title, url, source_id, source_name, category, published_at) VALUES ('n1', 'Test News', 'https://example.com/n1', 'hn', 'Hacker News', 'tech', datetime('now'))"
+            )
+
+        # Attempt 2: Ingest sources FIRST (Worker Step 3)
+        mem_conn.execute(
+            "INSERT INTO sources (id, name, url, type, category) VALUES ('hn', 'Hacker News', 'https://news.ycombinator.com', 'rss', 'tech') ON CONFLICT(id) DO NOTHING"
+        )
+
+        # Attempt 3: Ingest news SECOND (Worker Step 4)
+        mem_conn.execute(
+            "INSERT INTO news (id, title, url, source_id, source_name, category, published_at) VALUES ('n1', 'Test News', 'https://example.com/n1', 'hn', 'Hacker News', 'tech', datetime('now'))"
+        )
+
+        # Verify news and source link
+        stored_news = mem_conn.execute("SELECT id, source_id FROM news WHERE id = 'n1'").fetchone()
+        self.assertEqual(stored_news, ("n1", "hn"))
+
+        mem_conn.close()
+
 if __name__ == "__main__":
     unittest.main()

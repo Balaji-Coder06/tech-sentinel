@@ -52,7 +52,8 @@ class RSSCollector(BaseCollector):
                     continue
 
                 link = entry.get("link", "")
-                description = entry.get("summary", "") or entry.get("description", "")
+                raw_summary = entry.get("summary", "") or entry.get("description", "") or ""
+                description = raw_summary
                 
                 # Strip HTML tags from description
                 if description:

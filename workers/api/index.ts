@@ -144,7 +144,30 @@ export default {
           );
         }
 
-        // 3. Ingest News Items
+        // 3. Guarantee Sources exist before News insertion (satisfies FOREIGN KEY(source_id) REFERENCES sources(id))
+        const seenSources = new Set<string>();
+        for (const item of newsItems) {
+          if (item.source_id && !seenSources.has(item.source_id)) {
+            seenSources.add(item.source_id);
+            const sourceUrl = item.canonical_url || item.url || `https://${item.source_id}.internal`;
+            statements.push(
+              env.DB.prepare(`
+                INSERT INTO sources (id, name, url, type, category)
+                VALUES (?, ?, ?, 'rss', ?)
+                ON CONFLICT(id) DO UPDATE SET
+                  name=excluded.name,
+                  category=excluded.category
+              `).bind(
+                item.source_id,
+                item.source_name || item.source_id,
+                sourceUrl,
+                item.category || 'tech'
+              )
+            );
+          }
+        }
+
+        // 4. Ingest News Items
         for (const item of newsItems) {
           const summaryWhat = item.summary?.what || null;
           const summaryWhy = item.summary?.why || null;
