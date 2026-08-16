@@ -145,23 +145,42 @@ export default {
         }
 
         // 3. Guarantee Sources exist before News insertion (satisfies FOREIGN KEY(source_id) REFERENCES sources(id))
+        const KNOWN_SOURCES: Record<string, { name: string; url: string; type: string; category: string }> = {
+          src_hn: { name: 'Hacker News', url: 'https://news.ycombinator.com/rss', type: 'rss', category: 'development' },
+          src_tc: { name: 'TechCrunch AI', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', type: 'rss', category: 'ai' },
+          src_devto: { name: 'Dev.to', url: 'https://dev.to/feed', type: 'rss', category: 'development' },
+          src_freecodecamp: { name: 'freeCodeCamp', url: 'https://www.freecodecamp.org/news/rss/', type: 'rss', category: 'education' },
+          src_gh_trend: { name: 'GitHub Trending', url: 'https://github.com/trending', type: 'github', category: 'open_source' },
+          src_official: { name: 'Official Provider Registry', url: 'https://cloud.google.com/free', type: 'official', category: 'cloud' },
+          src_openai: { name: 'OpenAI Blog', url: 'https://openai.com/news/rss.xml', type: 'rss', category: 'ai' },
+          src_deepmind: { name: 'Google DeepMind', url: 'https://deepmind.google/blog/rss.xml', type: 'rss', category: 'ai' },
+          src_anthropic: { name: 'Anthropic News', url: 'https://www.anthropic.com/news/feed', type: 'rss', category: 'ai' },
+        };
+
         const seenSources = new Set<string>();
         for (const item of newsItems) {
-          if (item.source_id && !seenSources.has(item.source_id)) {
-            seenSources.add(item.source_id);
-            const sourceUrl = item.canonical_url || item.url || `https://${item.source_id}.internal`;
+          const sId = item.source_id ? String(item.source_id).trim() : null;
+          if (sId && !seenSources.has(sId)) {
+            seenSources.add(sId);
+            const meta = KNOWN_SOURCES[sId] || {
+              name: item.source_name || sId,
+              url: `https://techsentinel.source.${sId}.internal`,
+              type: 'rss',
+              category: item.category || 'development'
+            };
             statements.push(
               env.DB.prepare(`
                 INSERT INTO sources (id, name, url, type, category)
-                VALUES (?, ?, ?, 'rss', ?)
+                VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                   name=excluded.name,
                   category=excluded.category
               `).bind(
-                item.source_id,
-                item.source_name || item.source_id,
-                sourceUrl,
-                item.category || 'tech'
+                sId,
+                meta.name,
+                meta.url,
+                meta.type,
+                meta.category
               )
             );
           }
@@ -174,6 +193,7 @@ export default {
           const summaryAction = item.summary?.action || null;
           const keyPoints = JSON.stringify(item.summary?.key_points || []);
           const tags = JSON.stringify(item.tags || []);
+          const validSourceId = (item.source_id && String(item.source_id).trim() !== '') ? String(item.source_id).trim() : null;
 
           statements.push(
             env.DB.prepare(`
@@ -199,7 +219,7 @@ export default {
                 is_trending=excluded.is_trending
             `).bind(
               item.id, item.title, item.description, item.content || '', item.url,
-              item.canonical_url || null, item.image_url || null, item.source_id || null,
+              item.canonical_url || null, item.image_url || null, validSourceId,
               item.source_name, item.category, tags, item.read_time_minutes || 3,
               summaryWhat, summaryWhy, summaryAction, keyPoints,
               item.importance_score || 50, item.relevance_score || 50,
