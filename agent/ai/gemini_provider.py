@@ -5,14 +5,14 @@ from typing import Dict, Any, List, Optional
 import httpx
 from .provider import BaseAIProvider
 from .fallback_provider import FallbackProvider
-from .rate_limiter import parse_retry_after, apply_pacing_delay
+from .rate_limiter import parse_retry_after, apply_global_pacing, record_request_completed
 from ..models import SentinelSummary
 from ..config import settings
 
 logger = logging.getLogger(__name__)
 
 class GeminiProvider(BaseAIProvider):
-    """Google Gemini Free Tier (gemini-2.5-flash) inference provider with rate-aware backoff."""
+    """Google Gemini Free Tier (gemini-2.5-flash) inference provider with global rate-aware backoff."""
     
     def __init__(self, fallback: Optional[BaseAIProvider] = None):
         self.api_key = settings.GEMINI_API_KEY
@@ -44,12 +44,13 @@ Return JSON with exact keys:
 
         for attempt in range(max_retries):
             try:
-                apply_pacing_delay()
+                apply_global_pacing()
                 with httpx.Client(timeout=10.0) as client:
                     res = client.post(url, json={
                         "contents": [{"parts": [{"text": prompt}]}],
                         "generationConfig": {"response_mime_type": "application/json"}
                     })
+                    record_request_completed()
 
                     if res.status_code == 200:
                         data = res.json()
@@ -70,6 +71,7 @@ Return JSON with exact keys:
                                 f"Backing off {wait_sec:.1f}s before retry ({attempt + 2}/{max_retries})..."
                             )
                             time.sleep(wait_sec)
+                            record_request_completed()
                             continue
                         else:
                             logger.warning(
@@ -81,6 +83,7 @@ Return JSON with exact keys:
                         logger.warning(f"Gemini API returned HTTP {res.status_code}, cascading to fallback.")
                         break
             except Exception as e:
+                record_request_completed()
                 logger.warning(f"Gemini API error ({e}), cascading to fallback.")
                 break
 
@@ -115,12 +118,13 @@ Return JSON with exact keys:
 
         for attempt in range(max_retries):
             try:
-                apply_pacing_delay()
+                apply_global_pacing()
                 with httpx.Client(timeout=12.0) as client:
                     res = client.post(url, json={
                         "contents": [{"parts": [{"text": prompt}]}],
                         "generationConfig": {"response_mime_type": "application/json"}
                     })
+                    record_request_completed()
 
                     if res.status_code == 200:
                         data = res.json()
@@ -132,6 +136,7 @@ Return JSON with exact keys:
                         if attempt < max_retries - 1:
                             logger.warning(f"⏳ [AI Gemini] Digest rate limit (429). Waiting {wait_sec:.1f}s before retry ({attempt + 2}/{max_retries})...")
                             time.sleep(wait_sec)
+                            record_request_completed()
                             continue
                         else:
                             logger.warning(f"⚠️ [AI Gemini] Digest 429 persisted after {max_retries} attempts. Cascading to fallback.")
@@ -140,6 +145,7 @@ Return JSON with exact keys:
                         logger.warning(f"Gemini digest returned HTTP {res.status_code}, cascading to fallback.")
                         break
             except Exception as e:
+                record_request_completed()
                 logger.warning(f"Gemini digest error ({e}), cascading to fallback.")
                 break
 

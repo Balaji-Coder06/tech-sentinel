@@ -5,14 +5,14 @@ from typing import Dict, Any, List, Optional
 import httpx
 from .provider import BaseAIProvider
 from .fallback_provider import FallbackProvider
-from .rate_limiter import parse_retry_after, apply_pacing_delay
+from .rate_limiter import parse_retry_after, apply_global_pacing, record_request_completed
 from ..models import SentinelSummary
 from ..config import settings
 
 logger = logging.getLogger(__name__)
 
 class GroqProvider(BaseAIProvider):
-    """Groq Free Tier (Llama 3.3 70B Versatile) ultra-fast inference provider with rate-aware backoff."""
+    """Groq Free Tier (Llama 3.3 70B Versatile) ultra-fast inference provider with global rate-aware backoff."""
     
     def __init__(self, fallback: Optional[BaseAIProvider] = None):
         self.api_key = settings.GROQ_API_KEY
@@ -46,13 +46,14 @@ Format:
 
         for attempt in range(max_retries):
             try:
-                apply_pacing_delay()
+                apply_global_pacing()
                 with httpx.Client(timeout=8.0) as client:
                     res = client.post(url, headers=headers, json={
                         "model": self.model,
                         "messages": [{"role": "user", "content": prompt}],
                         "response_format": {"type": "json_object"}
                     })
+                    record_request_completed()
 
                     if res.status_code == 200:
                         data = res.json()
@@ -73,6 +74,7 @@ Format:
                                 f"Backing off {wait_sec:.1f}s before retry ({attempt + 2}/{max_retries})..."
                             )
                             time.sleep(wait_sec)
+                            record_request_completed()
                             continue
                         else:
                             logger.warning(
@@ -85,6 +87,7 @@ Format:
                         break
 
             except Exception as e:
+                record_request_completed()
                 logger.warning(f"Groq API error ({e}), cascading to fallback.")
                 break
 
@@ -120,13 +123,14 @@ Return JSON with exact keys:
 
         for attempt in range(max_retries):
             try:
-                apply_pacing_delay()
+                apply_global_pacing()
                 with httpx.Client(timeout=10.0) as client:
                     res = client.post(url, headers=headers, json={
                         "model": self.model,
                         "messages": [{"role": "user", "content": prompt}],
                         "response_format": {"type": "json_object"}
                     })
+                    record_request_completed()
 
                     if res.status_code == 200:
                         data = res.json()
@@ -138,6 +142,7 @@ Return JSON with exact keys:
                         if attempt < max_retries - 1:
                             logger.warning(f"⏳ [AI Groq] Digest rate limit (429). Waiting {wait_sec:.1f}s before retry ({attempt + 2}/{max_retries})...")
                             time.sleep(wait_sec)
+                            record_request_completed()
                             continue
                         else:
                             logger.warning(f"⚠️ [AI Groq] Digest 429 persisted after {max_retries} attempts. Cascading to fallback.")
@@ -146,6 +151,7 @@ Return JSON with exact keys:
                         logger.warning(f"Groq digest returned HTTP {res.status_code}, cascading to fallback.")
                         break
             except Exception as e:
+                record_request_completed()
                 logger.warning(f"Groq digest error ({e}), cascading to fallback.")
                 break
 

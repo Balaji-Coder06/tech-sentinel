@@ -7,6 +7,8 @@ from ..config import settings
 
 logger = logging.getLogger(__name__)
 
+_last_request_timestamp: float = 0.0
+
 def parse_retry_after(response: Optional[httpx.Response], default_delay: float) -> float:
     """Extracts wait duration from Retry-After header or response error body."""
     if response is None:
@@ -36,8 +38,26 @@ def parse_retry_after(response: Optional[httpx.Response], default_delay: float) 
 
     return min(max(default_delay, 0.5), settings.AI_RETRY_MAX_DELAY_SECONDS)
 
-def apply_pacing_delay():
-    """Applies a configurable pacing delay between requests to avoid RPM bursts."""
-    delay = getattr(settings, "AI_REQUEST_DELAY_SECONDS", 0.5)
-    if delay > 0:
-        time.sleep(delay)
+def apply_global_pacing(min_interval: Optional[float] = None):
+    """Enforces a global minimum interval between consecutive outbound AI requests."""
+    global _last_request_timestamp
+    target_interval = min_interval if min_interval is not None else getattr(settings, "AI_REQUEST_DELAY_SECONDS", 2.0)
+
+    if target_interval > 0 and _last_request_timestamp > 0:
+        elapsed = time.time() - _last_request_timestamp
+        remaining = target_interval - elapsed
+        if remaining > 0:
+            logger.debug(f"⏱️ [AI Pacing] Waiting {remaining:.2f}s before next request (target interval: {target_interval:.1f}s)...")
+            time.sleep(remaining)
+
+    _last_request_timestamp = time.time()
+
+def record_request_completed():
+    """Updates the global timestamp when a request finishes to maintain accurate pacing."""
+    global _last_request_timestamp
+    _last_request_timestamp = time.time()
+
+def reset_global_pacing():
+    """Resets global pacing timestamp for testing."""
+    global _last_request_timestamp
+    _last_request_timestamp = 0.0

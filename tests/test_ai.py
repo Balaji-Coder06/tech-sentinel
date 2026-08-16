@@ -1,15 +1,22 @@
 import unittest
+import time
 from unittest.mock import patch, MagicMock
 import httpx
 from agent.ai import get_ai_provider, AISummarizer, DailyDigestGenerator
 from agent.ai.groq_provider import GroqProvider
 from agent.ai.gemini_provider import GeminiProvider
 from agent.ai.fallback_provider import FallbackProvider
-from agent.ai.rate_limiter import parse_retry_after, apply_pacing_delay
+from agent.ai.rate_limiter import (
+    parse_retry_after,
+    apply_global_pacing,
+    record_request_completed,
+    reset_global_pacing
+)
 from agent.models import RawItem, SentinelSummary
 
 class TestAIEngine(unittest.TestCase):
     def setUp(self):
+        reset_global_pacing()
         self.sample_item = RawItem(
             title="Anthropic Releases Claude 3.7 Sonnet with Dynamic Hybrid Reasoning",
             description="Anthropic launched Claude 3.7 Sonnet with instantaneous and extended reasoning tokens.",
@@ -45,7 +52,7 @@ class TestAIEngine(unittest.TestCase):
         self.assertIn("thirty_sec_summary", digest)
         self.assertIn("sentinel_take", digest)
 
-    @patch("agent.ai.groq_provider.apply_pacing_delay")
+    @patch("agent.ai.groq_provider.apply_global_pacing")
     @patch("httpx.Client")
     def test_groq_provider_successful_summary(self, mock_client_cls, mock_pacing):
         """3. GroqProvider correctly parses valid JSON completion."""
@@ -70,7 +77,7 @@ class TestAIEngine(unittest.TestCase):
             self.assertEqual(summary.action, "Test in console")
             self.assertEqual(summary.key_points, ["Point 1"])
 
-    @patch("agent.ai.groq_provider.apply_pacing_delay")
+    @patch("agent.ai.groq_provider.apply_global_pacing")
     @patch("httpx.Client")
     def test_groq_error_cascades_to_fallback(self, mock_client_cls, mock_pacing):
         """4. GroqProvider error safely cascades to secondary provider or fallback."""
@@ -91,7 +98,7 @@ class TestAIEngine(unittest.TestCase):
             self.assertEqual(summary.what, "Fallback summary")
             fallback_spy.generate_summary.assert_called_once()
 
-    @patch("agent.ai.gemini_provider.apply_pacing_delay")
+    @patch("agent.ai.gemini_provider.apply_global_pacing")
     @patch("httpx.Client")
     def test_gemini_provider_successful_summary(self, mock_client_cls, mock_pacing):
         """5. GeminiProvider correctly parses valid gemini-2.5-flash response."""
@@ -145,7 +152,7 @@ class TestAIEngine(unittest.TestCase):
         self.assertEqual(parse_retry_after(res_plain, default_delay=2.0), 2.0)
 
     @patch("time.sleep")
-    @patch("agent.ai.groq_provider.apply_pacing_delay")
+    @patch("agent.ai.groq_provider.apply_global_pacing")
     @patch("httpx.Client")
     def test_groq_429_retries_and_succeeds(self, mock_client_cls, mock_pacing, mock_sleep):
         """8. Groq retries upon receiving 429 and succeeds on subsequent attempt without disabling provider."""
@@ -177,7 +184,7 @@ class TestAIEngine(unittest.TestCase):
             self.assertEqual(mock_client.post.call_count, 2)
 
     @patch("time.sleep")
-    @patch("agent.ai.groq_provider.apply_pacing_delay")
+    @patch("agent.ai.groq_provider.apply_global_pacing")
     @patch("httpx.Client")
     def test_groq_429_persisted_falls_back_to_gemini(self, mock_client_cls, mock_pacing, mock_sleep):
         """9. Groq falls back to Gemini only after retry backoff policy is exhausted."""
@@ -204,7 +211,7 @@ class TestAIEngine(unittest.TestCase):
             self.assertEqual(mock_client.post.call_count, 2)
 
     @patch("time.sleep")
-    @patch("agent.ai.gemini_provider.apply_pacing_delay")
+    @patch("agent.ai.gemini_provider.apply_global_pacing")
     @patch("httpx.Client")
     def test_gemini_429_persisted_falls_back_to_offline_nlp(self, mock_client_cls, mock_pacing, mock_sleep):
         """10. Gemini falls back to deterministic NLP after its retry policy is exhausted."""
@@ -228,6 +235,21 @@ class TestAIEngine(unittest.TestCase):
             summary = provider.generate_summary(self.sample_item.title, self.sample_item.content, "ai")
             self.assertEqual(summary.what, "Heuristic summary")
             fallback_nlp.generate_summary.assert_called_once()
+
+    @patch("time.sleep")
+    def test_global_pacing_enforces_interval(self, mock_sleep):
+        """11. apply_global_pacing enforces minimum time interval between consecutive calls."""
+        reset_global_pacing()
+        
+        # 1st call sets timestamp without sleeping
+        apply_global_pacing(min_interval=2.0)
+        mock_sleep.assert_not_called()
+
+        # 2nd call immediate after will sleep
+        apply_global_pacing(min_interval=2.0)
+        mock_sleep.assert_called_once()
+        args, _ = mock_sleep.call_args
+        self.assertTrue(1.8 <= args[0] <= 2.0)
 
 if __name__ == "__main__":
     unittest.main()
