@@ -30,4 +30,5 @@ jobs:
           WORKER_API_URL: ${{ secrets.WORKER_API_URL }}
           INGESTION_SECRET: ${{ secrets.INGESTION_SECRET }}
         run: |
+          python -m agent.main collect
           python -m agent.main process
