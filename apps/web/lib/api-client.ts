@@ -1,6 +1,6 @@
 import { NewsItem, Opportunity, DailyReport, UserPreferences, AgentStats } from './types';
 
-const API_BASE = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000');
+const API_BASE = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://tech-sentinel-chi.vercel.app');
 
 export async function fetchNews(
   category?: string, 

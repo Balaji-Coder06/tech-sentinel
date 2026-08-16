@@ -43,6 +43,10 @@ class TestEmailNotifier(unittest.TestCase):
         self.assertIn("Google Cloud $300 Credits", html)
         self.assertIn("AWS Builder Grant", html)
         self.assertIn("Focus on adopting lightweight", html)
+        self.assertIn("https://tech-sentinel-chi.vercel.app/reports/2026-08-16", html)
+        self.assertIn("https://tech-sentinel-chi.vercel.app/settings", html)
+        self.assertNotIn("localhost:3000", html)
+        self.assertNotIn("pages.dev", html)
 
     def test_email_formatting_text(self):
         notifier = EmailNotifier()

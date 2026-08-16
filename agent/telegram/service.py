@@ -562,7 +562,7 @@ class TelegramBotService:
         public_url = get_public_web_app_url()
         lines = [
             "🛡️ <b>TECH SENTINEL — DAILY INTELLIGENCE DIGEST</b>",
-            "<i>Your personalized 8:00 PM briefing & Free Radar dispatch</i>\n",
+            "<i>Your personalized briefing & Free Radar dispatch</i>\n",
             "📰 <b>TOP INTELLIGENCE FOR YOU:</b>"
         ]
 

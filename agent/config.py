@@ -36,8 +36,8 @@ class Settings(BaseModel):
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
     
     # Web / App URL
-    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000")
-    WEB_APP_URL: str = os.getenv("WEB_APP_URL", "")  # Optional public HTTPS URL for Telegram buttons
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "https://tech-sentinel-chi.vercel.app")
+    WEB_APP_URL: str = os.getenv("WEB_APP_URL", os.getenv("APP_BASE_URL", "https://tech-sentinel-chi.vercel.app"))  # Canonical public HTTPS URL for links & Telegram buttons
     
     # Ingestion Configuration
     REQUEST_TIMEOUT_SECONDS: int = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "15"))

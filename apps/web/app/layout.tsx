@@ -7,6 +7,7 @@ import { MobileNav } from '../components/MobileNav';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://tech-sentinel-chi.vercel.app'),
   title: 'Tech Sentinel',
   description: 'Personal AI-powered technology intelligence agent and free opportunity radar.',
   icons: {

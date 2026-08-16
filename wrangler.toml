@@ -10,5 +10,5 @@ database_id = "2ccbbd13-7052-43ad-9ae5-1989079a7a0f"
 
 [vars]
 ENVIRONMENT = "production"
-CORS_ORIGIN = "https://tech-sentinel.pages.dev"
+CORS_ORIGIN = "https://tech-sentinel-chi.vercel.app"
 # INGESTION_SECRET is set via `wrangler secret put INGESTION_SECRET`

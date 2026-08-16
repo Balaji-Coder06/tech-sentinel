@@ -152,10 +152,10 @@ class TestTelegramBotService(unittest.TestCase):
             settings.WEB_APP_URL = "http://localhost:3000"
             self.assertIsNone(get_public_web_app_url())
 
-        with patch.dict(os.environ, {"WEB_APP_URL": "https://tech-sentinel.app"}):
-            settings.WEB_APP_URL = "https://tech-sentinel.app"
-            self.assertEqual(get_public_web_app_url(), "https://tech-sentinel.app")
-            self.assertEqual(get_public_web_app_url("news"), "https://tech-sentinel.app/news")
+        with patch.dict(os.environ, {"WEB_APP_URL": "https://tech-sentinel-chi.vercel.app"}):
+            settings.WEB_APP_URL = "https://tech-sentinel-chi.vercel.app"
+            self.assertEqual(get_public_web_app_url(), "https://tech-sentinel-chi.vercel.app")
+            self.assertEqual(get_public_web_app_url("news"), "https://tech-sentinel-chi.vercel.app/news")
             settings.WEB_APP_URL = ""
 
     def test_send_message_filters_localhost_buttons(self):

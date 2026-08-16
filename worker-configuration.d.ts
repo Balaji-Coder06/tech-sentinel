@@ -4,7 +4,7 @@
 interface __BaseEnv_Env {
 	tech_sentinel_db: D1Database;
 	ENVIRONMENT: "production";
-	CORS_ORIGIN: "https://tech-sentinel.pages.dev";
+	CORS_ORIGIN: "https://tech-sentinel-chi.vercel.app";
 	TELEGRAM_BOT_TOKEN: string;
 	TELEGRAM_CHAT_ID: string;
 	APP_BASE_URL: string;
