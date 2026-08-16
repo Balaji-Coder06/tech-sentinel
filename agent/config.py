@@ -29,6 +29,10 @@ class Settings(BaseModel):
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     LOCAL_AI_BASE_URL: str = os.getenv("LOCAL_AI_BASE_URL", "http://localhost:11434/v1")
     LOCAL_AI_MODEL: str = os.getenv("LOCAL_AI_MODEL", "llama3.2")
+    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "0.5"))
+    AI_MAX_RETRIES: int = int(os.getenv("AI_MAX_RETRIES", "3"))
+    AI_RETRY_BASE_DELAY_SECONDS: float = float(os.getenv("AI_RETRY_BASE_DELAY_SECONDS", "2.0"))
+    AI_RETRY_MAX_DELAY_SECONDS: float = float(os.getenv("AI_RETRY_MAX_DELAY_SECONDS", "15.0"))
     
     # Notifications
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
