@@ -1,0 +1,15 @@
+name = "tech-sentinel-api"
+main = "workers/api/index.ts"
+compatibility_date = "2026-08-01"
+
+# Production Cloudflare D1 Database Binding
+# Run `npx wrangler d1 create tech-sentinel-db` and replace database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "tech-sentinel-db"
+database_id = "your-d1-database-uuid" # Set to real UUID from wrangler d1 create
+
+[vars]
+ENVIRONMENT = "production"
+CORS_ORIGIN = "*" # Set to "https://tech-sentinel.pages.dev" in production
+# INGESTION_SECRET is set via `wrangler secret put INGESTION_SECRET`

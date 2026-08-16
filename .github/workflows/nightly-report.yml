@@ -1,0 +1,37 @@
+name: Tech Sentinel Nightly Digest & Telegram Dispatch
+
+on:
+  schedule:
+    - cron: '30 15 * * *' # 21:00 IST / 15:30 UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  generate-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Generate Nightly Digest, Sync & Notify Telegram
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'fallback' }}
+          WORKER_API_URL: ${{ secrets.WORKER_API_URL }}
+          INGESTION_SECRET: ${{ secrets.INGESTION_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL || 'https://tech-sentinel.pages.dev' }}
+        run: |
+          python -m agent.main report
+          python -m agent.main notify
