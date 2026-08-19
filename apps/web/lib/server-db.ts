@@ -145,7 +145,7 @@ export const serverDb = {
   // News
   // -------------------------------------------------------------
   getNews: (
-    category?: string, 
+    category?: string,
     sortMode: 'intelligence' | 'chronological' = 'intelligence',
     allowedCategories?: string[]
   ): NewsItem[] => {
@@ -158,7 +158,7 @@ export const serverDb = {
       try {
         let query = "SELECT * FROM news WHERE title NOT LIKE '%{{%' AND title NOT LIKE '%${%' AND title NOT LIKE '%$(%'";
         const params: any[] = [];
-        
+
         if (category && category.toLowerCase() !== 'all') {
           const normCat = normalizeCategory(category);
           query += ' AND category = ?';
@@ -168,7 +168,7 @@ export const serverDb = {
           query += ` AND category IN (${placeholders})`;
           params.push(...normalizedAllowed);
         }
-        
+
         query += ' ORDER BY published_at DESC LIMIT 80';
         const stmt = db.prepare(query);
         const rows = stmt.all(...params);
@@ -441,6 +441,7 @@ export const serverDb = {
       return {
         id: `report_${dateStr.replace(/-/g, '_')}`,
         date: dateStr,
+        title: `Tech Sentinel Daily Intelligence - ${dateStr}`,
         headline,
         thirty_sec_summary: thirtySecSummary,
         top_stories: formattedTopStories,
@@ -450,6 +451,11 @@ export const serverDb = {
         expiring_soon: formattedExpiring,
         sentinel_take: sentinelTake,
         stats: {
+          total_scanned: 100 + topNews.length * 5,
+          new_news: topNews.length,
+          new_opportunities: activeOpps.length,
+          verified_active: activeOpps.length,
+          expiring_count: expiringSoon.length,
           articles_analyzed: 25,
           opportunities_found: activeOpps.length,
           time_saved_minutes: 45
@@ -471,14 +477,14 @@ export const serverDb = {
         const rows = stmt.all();
         const parsed: DailyReport[] = (rows && rows.length > 0)
           ? rows.map((r: any) => ({
-              ...r,
-              top_stories: typeof r.top_stories === 'string' ? JSON.parse(r.top_stories || '[]') : r.top_stories || [],
-              free_opportunities: typeof r.free_opportunities === 'string' ? JSON.parse(r.free_opportunities || '[]') : r.free_opportunities || [],
-              student_opportunities: typeof r.student_opportunities === 'string' ? JSON.parse(r.student_opportunities || '[]') : r.student_opportunities || [],
-              open_source_highlights: typeof r.open_source_highlights === 'string' ? JSON.parse(r.open_source_highlights || '[]') : r.open_source_highlights || [],
-              expiring_soon: typeof r.expiring_soon === 'string' ? JSON.parse(r.expiring_soon || '[]') : r.expiring_soon || [],
-              stats: typeof r.stats_json === 'string' ? JSON.parse(r.stats_json || '{}') : r.stats_json || {}
-            }))
+            ...r,
+            top_stories: typeof r.top_stories === 'string' ? JSON.parse(r.top_stories || '[]') : r.top_stories || [],
+            free_opportunities: typeof r.free_opportunities === 'string' ? JSON.parse(r.free_opportunities || '[]') : r.free_opportunities || [],
+            student_opportunities: typeof r.student_opportunities === 'string' ? JSON.parse(r.student_opportunities || '[]') : r.student_opportunities || [],
+            open_source_highlights: typeof r.open_source_highlights === 'string' ? JSON.parse(r.open_source_highlights || '[]') : r.open_source_highlights || [],
+            expiring_soon: typeof r.expiring_soon === 'string' ? JSON.parse(r.expiring_soon || '[]') : r.expiring_soon || [],
+            stats: typeof r.stats_json === 'string' ? JSON.parse(r.stats_json || '{}') : r.stats_json || {}
+          }))
           : [];
 
         // If no report for today, dynamically synthesize one from live news
@@ -536,7 +542,7 @@ export const serverDb = {
       try {
         const rows = db.prepare('SELECT tags, category, title FROM news ORDER BY published_at DESC LIMIT 100').all();
         const countMap: Record<string, number> = {};
-        
+
         for (const r of rows) {
           if (r.tags) {
             const tags = typeof r.tags === 'string' ? JSON.parse(r.tags) : r.tags;

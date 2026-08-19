@@ -127,6 +127,9 @@ export interface DailyReport {
     new_opportunities?: number;
     verified_active?: number;
     expiring_count?: number;
+    articles_analyzed?: number;
+    opportunities_found?: number;
+    time_saved_minutes?: number;
   };
   published_at?: string;
 }
