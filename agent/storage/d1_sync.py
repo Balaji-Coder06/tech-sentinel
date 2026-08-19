@@ -164,3 +164,35 @@ class D1SyncClient:
         except Exception as e:
             logger.error(f"❌ Exception fetching email subscribers from Cloudflare D1: {e}")
             return []
+
+    def get_news(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetches recent news items from Cloudflare D1 via Worker API."""
+        if not self.is_configured:
+            return []
+        endpoint = f"{self.worker_url}/api/news?limit={limit}"
+        headers = {"User-Agent": settings.USER_AGENT}
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                res = client.get(endpoint, headers=headers)
+                if res.status_code == 200:
+                    return res.json().get("data", [])
+                return []
+        except Exception as e:
+            logger.warning(f"Note fetching news from Cloudflare D1: {e}")
+            return []
+
+    def get_opportunities(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """Fetches active opportunities from Cloudflare D1 via Worker API."""
+        if not self.is_configured:
+            return []
+        endpoint = f"{self.worker_url}/api/opportunities?limit={limit}"
+        headers = {"User-Agent": settings.USER_AGENT}
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                res = client.get(endpoint, headers=headers)
+                if res.status_code == 200:
+                    return res.json().get("data", [])
+                return []
+        except Exception as e:
+            logger.warning(f"Note fetching opportunities from Cloudflare D1: {e}")
+            return []

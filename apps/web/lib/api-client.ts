@@ -109,27 +109,30 @@ export async function fetchReportByDate(date: string): Promise<DailyReport | nul
   }
 }
 
-export async function fetchAgentStats(): Promise<AgentStats> {
+export async function fetchAgentStats(forceRefresh: boolean = false): Promise<AgentStats> {
   try {
-    const res = await fetch('/api/stats', { cache: 'no-store' });
+    const res = await fetch('/api/stats', { 
+      method: forceRefresh ? 'POST' : 'GET',
+      cache: 'no-store' 
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const json = await res.json();
     return json.data || {
       status: 'ACTIVE',
-      last_scan_time: 'Recently',
+      last_scan_time: 'Just now',
       sources_checked: 9,
       new_opportunities_today: 6,
-      next_report_time: '9:00 PM IST',
+      next_report_time: '8:00 AM IST',
       system_cost: '₹0.00'
     };
   } catch (e) {
     console.warn('Error fetching agent stats:', e);
     return {
       status: 'ACTIVE',
-      last_scan_time: 'Recently',
+      last_scan_time: 'Just now',
       sources_checked: 9,
       new_opportunities_today: 6,
-      next_report_time: '9:00 PM IST',
+      next_report_time: '8:00 AM IST',
       system_cost: '₹0.00'
     };
   }

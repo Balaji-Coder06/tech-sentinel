@@ -118,7 +118,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex-1 flex flex-col min-w-0">
-        <Header userName="Balaji" />
+        <Header />
         <div className="flex-1 flex items-center justify-center min-h-[60vh]">
           <Loader2 className="w-8 h-8 text-sentinel-accent animate-spin" />
         </div>
@@ -128,7 +128,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <Header userName={prefs.user_name || 'Balaji'} />
+      <Header />
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="space-y-1">
@@ -256,8 +256,8 @@ export default function SettingsPage() {
             <div className="space-y-3 pt-2">
               <label className="flex items-center justify-between p-3 rounded-2xl border border-sentinel-border bg-sentinel-card cursor-pointer">
                 <div>
-                  <span className="text-xs font-bold text-sentinel-text block">Nightly Telegram Brief</span>
-                  <span className="text-[11px] text-sentinel-muted">Receive the full daily summary via Telegram every night at 9:30 PM IST</span>
+                  <span className="text-xs font-bold text-sentinel-text block">Daily Telegram Brief</span>
+                  <span className="text-[11px] text-sentinel-muted">Receive the full daily summary via Telegram every morning at 8:00 AM IST</span>
                 </div>
                 <input
                   type="checkbox"
@@ -286,7 +286,7 @@ export default function SettingsPage() {
                     <Mail className="w-4 h-4 text-sentinel-accent" />
                     <div>
                       <span className="text-xs font-bold text-sentinel-text block">Gmail / Email Newsletter</span>
-                      <span className="text-[11px] text-sentinel-muted">Receive the Nightly Intelligence Brief in your inbox at 9:30 PM IST</span>
+                      <span className="text-[11px] text-sentinel-muted">Receive the Daily Intelligence Brief in your inbox at 8:00 AM IST</span>
                     </div>
                   </div>
                   <input

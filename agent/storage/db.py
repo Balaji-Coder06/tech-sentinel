@@ -99,7 +99,7 @@ class Database:
                 last_scan_time TEXT DEFAULT (datetime('now')),
                 sources_checked INTEGER DEFAULT 9,
                 new_opportunities_today INTEGER DEFAULT 0,
-                next_report_time TEXT DEFAULT '9:00 PM IST',
+                next_report_time TEXT DEFAULT '8:00 AM IST',
                 last_run_duration_sec REAL DEFAULT 0.0,
                 last_error TEXT,
                 updated_at TEXT DEFAULT (datetime('now'))
@@ -364,7 +364,9 @@ class Database:
             importance_score=excluded.importance_score,
             relevance_score=excluded.relevance_score,
             is_featured=excluded.is_featured,
-            is_trending=excluded.is_trending
+            is_trending=excluded.is_trending,
+            published_at=excluded.published_at,
+            discovered_at=excluded.discovered_at
         """
         summary_what = item.summary.what if item.summary else None
         summary_why = item.summary.why if item.summary else None
@@ -455,7 +457,8 @@ class Database:
             importance_score=excluded.importance_score,
             relevance_score=excluded.relevance_score,
             priority=excluded.priority,
-            why_care=excluded.why_care
+            why_care=excluded.why_care,
+            discovered_at=excluded.discovered_at
         """
         with self.get_connection() as conn:
             try:
@@ -842,7 +845,7 @@ class Database:
         INSERT INTO system_status (
             id, status, last_scan_time, sources_checked, new_opportunities_today,
             next_report_time, last_run_duration_sec, last_error, updated_at
-        ) VALUES ('current', 'ACTIVE', ?, ?, ?, '9:00 PM IST', ?, ?, ?)
+        ) VALUES ('current', 'ACTIVE', ?, ?, ?, '8:00 AM IST', ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             status='ACTIVE',
             last_scan_time=excluded.last_scan_time,
@@ -873,7 +876,7 @@ class Database:
                 "last_scan_time": datetime.now(timezone.utc).isoformat(),
                 "sources_checked": 9,
                 "new_opportunities_today": 6,
-                "next_report_time": "9:00 PM IST",
+                "next_report_time": "8:00 AM IST",
                 "system_cost": "₹0.00"
             }
 

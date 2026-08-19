@@ -20,8 +20,11 @@ export function AgentStatusWidget({ stats, onRefresh, isRefreshing }: AgentStatu
     <div className="rounded-3xl border border-sentinel-border bg-sentinel-card p-4 sm:p-5 shadow-subtle space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-sentinel-success radar-active" />
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
           <h4 className="font-extrabold text-xs text-sentinel-text uppercase tracking-wider">
             Sentinel Radar
           </h4>
@@ -58,7 +61,7 @@ export function AgentStatusWidget({ stats, onRefresh, isRefreshing }: AgentStatu
 
         <div className="p-2.5 rounded-xl bg-sentinel-border/30 border border-sentinel-border/50 space-y-0.5">
           <span className="text-[10px] text-sentinel-muted uppercase font-semibold block">Next Digest</span>
-          <span className="font-bold text-sentinel-text">{stats.next_report_time || '9:00 PM IST'}</span>
+          <span className="font-bold text-sentinel-text">{stats.next_report_time || '8:00 AM IST'}</span>
         </div>
       </div>
 

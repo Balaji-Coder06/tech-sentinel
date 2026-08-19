@@ -1,12 +1,12 @@
-name: Tech Sentinel Nightly Intelligence & Unified Dispatch
+name: Tech Sentinel Daily Intelligence & Unified Dispatch
 
 on:
   schedule:
-    - cron: '30 16 * * *' # 9:30 PM IST / 16:00 UTC
+    - cron: '30 2 * * *' # 8:00 AM IST / 02:30 UTC
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  nightly-report-and-dispatch:
+  daily-report-and-dispatch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -22,7 +22,7 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Generate Nightly Intelligence Report & Dispatch
+      - name: Collect, Process, Synthesize Daily Report & Dispatch
         env:
           WORKER_API_URL: ${{ secrets.WORKER_API_URL }}
           INGESTION_SECRET: ${{ secrets.INGESTION_SECRET }}
@@ -30,11 +30,16 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
-          SMTP_USER: ${{ secrets.SMTP_USER || secrets.GMAIL_USER || '' }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.GMAIL_APP_PASSWORD || '' }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM || '' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || secrets.GMAIL_USER || secrets.EMAIL_USER || '' }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.GMAIL_APP_PASSWORD || secrets.EMAIL_PASSWORD || '' }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER || secrets.SMTP_USER || secrets.EMAIL_USER || '' }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD || secrets.SMTP_PASSWORD || secrets.EMAIL_PASSWORD || '' }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM || secrets.SMTP_USER || secrets.GMAIL_USER || '' }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO || secrets.NEWSLETTER_EMAIL || '' }}
           APP_BASE_URL: ${{ secrets.APP_BASE_URL || 'https://tech-sentinel-chi.vercel.app' }}
           WEB_APP_URL: ${{ secrets.WEB_APP_URL || 'https://tech-sentinel-chi.vercel.app' }}
         run: |
+          python -m agent.main collect
+          python -m agent.main process
           python -m agent.main report
           python -m agent.main dispatch

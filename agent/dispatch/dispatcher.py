@@ -114,6 +114,19 @@ class UnifiedDispatcher:
                     "preferences": prefs
                 })
 
+        # Ensure default_chat_id (from TELEGRAM_CHAT_ID secret) is included
+        default_chat_id = str(self.telegram_bot.default_chat_id or "").strip()
+        if default_chat_id:
+            existing_chats = {str(s.get("chat_id") or s.get("user_id")).strip() for s in subscribers}
+            if default_chat_id not in existing_chats:
+                logger.info(f"ℹ️ [TELEGRAM DISPATCH] Including default configured TELEGRAM_CHAT_ID: {default_chat_id}")
+                subscribers.append({
+                    "user_id": default_chat_id,
+                    "chat_id": default_chat_id,
+                    "first_name": "Admin",
+                    "preferences": {}
+                })
+
         stats["telegram"]["candidates"] = len(subscribers)
         if not subscribers:
             logger.info("ℹ️ [TELEGRAM DISPATCH] No active opted-in Telegram subscribers found.")
@@ -183,25 +196,46 @@ class UnifiedDispatcher:
 
     def _dispatch_email(self, report: DailyReport, stats: Dict[str, Any], force: bool = False):
         """Dispatches to explicitly opted-in Email newsletter subscribers with idempotency checks."""
+        if not self.email_notifier.is_configured:
+            logger.info("ℹ️ [EMAIL DISPATCH] SMTP credentials (host, username, password) not configured in environment. Skipping email transmission.")
+            return
+
         # Query opted-in email preferences from Cloudflare D1 if configured, fallback to local SQLite
         email_subscribers: List[Dict[str, Any]] = []
         if self.d1_client.is_configured:
             try:
-                email_subscribers = self.d1_client.get_email_subscribers()
+                d1_subscribers = self.d1_client.get_email_subscribers()
+                if d1_subscribers:
+                    email_subscribers.extend(d1_subscribers)
             except Exception as err:
                 logger.warning(f"Note fetching email subscribers from D1: {err}")
-                email_subscribers = self.db.get_email_subscribers()
-        else:
-            email_subscribers = self.db.get_email_subscribers()
+
+        # Also pull any local SQLite subscribers if present
+        local_email_subs = self.db.get_email_subscribers()
+        for ls in local_email_subs:
+            ls_email = (ls.get("newsletter_email") or ls.get("email") or "").strip().lower()
+            if ls_email and not any((s.get("newsletter_email") or s.get("email") or "").strip().lower() == ls_email for s in email_subscribers):
+                email_subscribers.append(ls)
+
+        # Include explicit EMAIL_TO if set in environment
+        explicit_target = (getattr(settings, "EMAIL_TO", "") or os.getenv("EMAIL_TO") or os.getenv("NEWSLETTER_EMAIL") or "").strip().lower()
+        if explicit_target and "@" in explicit_target:
+            existing_emails = {(s.get("newsletter_email") or s.get("email") or "").strip().lower() for s in email_subscribers}
+            if explicit_target not in existing_emails:
+                logger.info(f"ℹ️ [EMAIL DISPATCH] Including explicit target email from environment/secrets: {explicit_target}")
+                email_subscribers.append({"email": explicit_target, "newsletter_email": explicit_target})
+
+        # If still empty, and SMTP_USER is an email address, treat as fallback recipient
+        if not email_subscribers:
+            admin_email = (getattr(settings, "SMTP_USER", "") or os.getenv("SMTP_USER") or os.getenv("GMAIL_USER") or "").strip().lower()
+            if admin_email and "@" in admin_email:
+                logger.info(f"ℹ️ [EMAIL DISPATCH] No D1 subscriber profile found; routing newsletter to configured SMTP admin user: {admin_email}")
+                email_subscribers.append({"email": admin_email, "newsletter_email": admin_email})
 
         stats["email"]["candidates"] = len(email_subscribers)
 
         if not email_subscribers:
             logger.info("ℹ️ [EMAIL DISPATCH] No active opted-in email newsletter subscribers found.")
-            return
-
-        if not self.email_notifier.is_configured:
-            logger.info("ℹ️ [EMAIL DISPATCH] SMTP credentials not configured in environment. Skipping email transmission.")
             return
 
         logger.info(f"📧 [EMAIL DISPATCH] Dispatching to {len(email_subscribers)} opted-in email subscriber(s)...")

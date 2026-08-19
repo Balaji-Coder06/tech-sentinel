@@ -57,7 +57,7 @@ Tech Sentinel is an autonomous technology intelligence system built for develope
 | **Edge API & Database** | Cloudflare Workers (TypeScript), Cloudflare D1 (Serverless SQLite) |
 | **Agent Engine** | Python 3.10+, `httpx`, `feedparser`, `beautifulsoup4`, `pydantic`, `scikit-learn` |
 | **NLP Engine** | Local Deterministic Heuristic Engine (zero API costs, offline capable) |
-| **Automation** | GitHub Actions (`collect.yml` every 2h, `nightly-report.yml` nightly at 9:30 PM IST) |
+| **Automation** | GitHub Actions (`collect.yml` every 2h, `nightly-report.yml` daily at 8:00 AM IST) |
 | **Delivery Channels** | Telegram Bot (Serverless Webhook + Polling), SMTP / Gmail Newsletter |
 
 ---

@@ -28,16 +28,17 @@ class Settings(BaseModel):
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
     
     # Generic SMTP / Gmail Email Delivery
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USER: str = os.getenv("SMTP_USER", os.getenv("GMAIL_USER", os.getenv("EMAIL_USER", "")))
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", os.getenv("GMAIL_APP_PASSWORD", os.getenv("EMAIL_PASSWORD", "")))
-    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
-    EMAIL_FROM: str = os.getenv("EMAIL_FROM", "")
+    SMTP_HOST: str = os.getenv("SMTP_HOST") or "smtp.gmail.com"
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT") or "587")
+    SMTP_USER: str = os.getenv("SMTP_USER") or os.getenv("GMAIL_USER") or os.getenv("EMAIL_USER") or ""
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD") or os.getenv("GMAIL_APP_PASSWORD") or os.getenv("EMAIL_PASSWORD") or ""
+    SMTP_USE_TLS: bool = (os.getenv("SMTP_USE_TLS") or "true").lower() in ("true", "1", "yes")
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM") or os.getenv("SMTP_USER") or os.getenv("GMAIL_USER") or ""
+    EMAIL_TO: str = os.getenv("EMAIL_TO") or os.getenv("NEWSLETTER_EMAIL") or ""
     
     # Web / App URL
-    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "https://tech-sentinel-chi.vercel.app")
-    WEB_APP_URL: str = os.getenv("WEB_APP_URL", os.getenv("APP_BASE_URL", "https://tech-sentinel-chi.vercel.app"))  # Canonical public HTTPS URL for links & Telegram buttons
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL") or "https://tech-sentinel-chi.vercel.app"
+    WEB_APP_URL: str = os.getenv("WEB_APP_URL") or os.getenv("APP_BASE_URL") or "https://tech-sentinel-chi.vercel.app"  # Canonical public HTTPS URL for links & Telegram buttons
     
     # Ingestion Configuration
     REQUEST_TIMEOUT_SECONDS: int = int(os.getenv("REQUEST_TIMEOUT_SECONDS", "15"))

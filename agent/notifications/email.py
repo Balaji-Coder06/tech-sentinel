@@ -21,12 +21,27 @@ class EmailNotifier:
         use_tls: Optional[bool] = None,
         sender: Optional[str] = None
     ):
-        self.host = host or settings.SMTP_HOST
-        self.port = port or settings.SMTP_PORT
-        self.username = username or settings.SMTP_USER
-        self.password = password or settings.SMTP_PASSWORD
+        self.host = (host or settings.SMTP_HOST or "smtp.gmail.com").strip()
+        self.port = int(port or settings.SMTP_PORT or 587)
+        self.username = (username or settings.SMTP_USER or "").strip()
+        self.password = (password or settings.SMTP_PASSWORD or "").strip()
         self.use_tls = settings.SMTP_USE_TLS if use_tls is None else use_tls
-        self.sender = sender or settings.EMAIL_FROM or self.username or "Tech Sentinel <noreply@tech-sentinel.com>"
+        
+        raw_sender = (sender or settings.EMAIL_FROM or self.username or "Tech Sentinel <noreply@tech-sentinel.com>").strip()
+        if raw_sender and "@" in raw_sender and "<" not in raw_sender:
+            self.sender = f"Tech Sentinel <{raw_sender}>"
+        else:
+            self.sender = raw_sender
+        
+        self.envelope_from = self._extract_clean_email(raw_sender) or self.username
+
+    @staticmethod
+    def _extract_clean_email(addr_str: str) -> str:
+        if not addr_str:
+            return ""
+        if "<" in addr_str and ">" in addr_str:
+            return addr_str.split("<")[1].split(">")[0].strip()
+        return addr_str.strip()
 
     @property
     def is_configured(self) -> bool:
@@ -215,19 +230,23 @@ class EmailNotifier:
 
         try:
             if self.port == 465:
-                server = smtplib.SMTP_SSL(self.host, self.port, timeout=15)
+                server = smtplib.SMTP_SSL(self.host, self.port, timeout=20)
             else:
-                server = smtplib.SMTP(self.host, self.port, timeout=15)
+                server = smtplib.SMTP(self.host, self.port, timeout=20)
                 if self.use_tls:
                     server.starttls()
 
             if self.username and self.password:
                 server.login(self.username, self.password)
 
-            server.sendmail(self.sender, [recipient_email], msg.as_string())
+            envelope_from = self.envelope_from or self.username or self._extract_clean_email(self.sender)
+            server.sendmail(envelope_from, [recipient_email], msg.as_string())
             server.quit()
-            logger.info(f"✅ Newsletter successfully sent to email: {recipient_email}")
+            logger.info(f"✅ Newsletter successfully sent to email: {recipient_email} (from: {envelope_from})")
             return True
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"❌ [EMAIL AUTH ERROR] Failed authenticating with SMTP server {self.host}:{self.port} as '{self.username}': {e}. Verify your App Password.")
+            return False
         except Exception as e:
-            logger.error(f"❌ Failed to send newsletter email to {recipient_email}: {e}")
+            logger.error(f"❌ [EMAIL DELIVERY ERROR] Failed to send newsletter email to {recipient_email}: {e}")
             return False

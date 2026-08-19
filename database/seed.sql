@@ -351,7 +351,7 @@ VALUES (
     datetime('now'),
     9,
     6,
-    '9:00 PM IST',
+    '8:00 AM IST',
     4.2,
     NULL
 );

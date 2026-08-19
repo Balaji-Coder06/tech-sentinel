@@ -39,7 +39,7 @@ export default function ReportDetailPage() {
   if (loading) {
     return (
       <div className="flex-1 flex flex-col min-w-0">
-        <Header userName="Balaji" />
+        <Header />
         <div className="flex-1 flex items-center justify-center min-h-[60vh]">
           <Loader2 className="w-8 h-8 text-sentinel-accent animate-spin" />
         </div>
@@ -50,14 +50,14 @@ export default function ReportDetailPage() {
   if (notFound || !report) {
     return (
       <div className="flex-1 flex flex-col min-w-0">
-        <Header userName="Balaji" />
+        <Header />
         <main className="flex-1 max-w-2xl w-full mx-auto p-6 sm:p-12 text-center space-y-4 my-auto">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
           <h2 className="text-xl font-bold text-sentinel-text">Daily Intelligence Report Not Found</h2>
           <p className="text-xs text-sentinel-muted">
-            No intelligence digest exists for date &ldquo;{date}&rdquo;. Reports are generated automatically every night at 9:00 PM IST.
+            No intelligence digest exists for date &ldquo;{date}&rdquo;. Reports are generated automatically every morning at 8:00 AM IST.
           </p>
           <div className="pt-2">
             <Link
@@ -75,7 +75,7 @@ export default function ReportDetailPage() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <Header userName="Balaji" />
+      <Header />
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
         {/* Navigation Bar */}
@@ -226,7 +226,7 @@ export default function ReportDetailPage() {
           {/* Footer Signoff */}
           <div className="text-center pt-6 border-t border-sentinel-border text-xs text-sentinel-muted space-y-1">
             <p className="font-bold text-sentinel-text">You missed nothing in tech today.</p>
-            <p>Generated autonomously by Tech Sentinel. Dispatched nightly at 9:00 PM IST.</p>
+            <p>Generated autonomously by Tech Sentinel. Dispatched daily at 8:00 AM IST.</p>
           </div>
         </article>
       </main>

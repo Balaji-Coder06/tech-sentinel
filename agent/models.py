@@ -117,6 +117,6 @@ class SystemStatus(BaseModel):
     last_scan_time: str = Field(default_factory=utc_now_iso)
     sources_checked: int = 0
     new_opportunities_today: int = 0
-    next_report_time: str = "9:00 PM IST"
+    next_report_time: str = "8:00 AM IST"
     last_run_duration_sec: float = 0.0
     last_error: Optional[str] = None

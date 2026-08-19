@@ -18,6 +18,7 @@ interface SentinelImageProps {
   alt: string;
   category?: string;
   className?: string;
+  showLabels?: boolean;
 }
 
 export function SentinelImage({
@@ -25,6 +26,7 @@ export function SentinelImage({
   alt,
   category = 'development',
   className = 'w-full h-full object-cover transition-transform duration-500 group-hover:scale-105',
+  showLabels = false,
 }: SentinelImageProps) {
   const [hasError, setHasError] = useState(false);
 
@@ -104,10 +106,10 @@ export function SentinelImage({
     );
   }
 
-  // Polished Tech Sentinel Category-Themed Fallback
+  // Polished Tech Sentinel Category-Themed Fallback Canvas
   return (
     <div 
-      className="w-full h-full relative overflow-hidden flex flex-col justify-between p-3 select-none transition-transform duration-500 group-hover:scale-105"
+      className="w-full h-full relative overflow-hidden flex flex-col justify-center items-center p-3 select-none transition-transform duration-500 group-hover:scale-105"
       style={{ 
         background: `linear-gradient(135deg, ${theme.gradient})`,
         backgroundImage: theme.pattern
@@ -116,26 +118,19 @@ export function SentinelImage({
       {/* Subtle Background Circuit Mesh */}
       <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#ffffff20_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none" />
 
-      {/* Top Tag */}
-      <div className="relative z-10 flex items-center justify-between">
-        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/50 backdrop-blur-md border border-white/10 text-[9px] font-mono font-bold tracking-wider uppercase text-white/90">
-          <Zap className="w-2.5 h-2.5 text-sentinel-accent fill-sentinel-accent" />
-          <span>SENTINEL</span>
+      {/* Central Ambient Watermark Icon */}
+      <div className="opacity-25 transform transition-transform duration-700 group-hover:scale-110 pointer-events-none">
+        <IconComponent className="w-16 h-16 sm:w-20 sm:h-20 text-white/90 stroke-[1.2]" />
+      </div>
+
+      {showLabels && (
+        <div className="absolute bottom-2 left-2 z-10">
+          <span className="text-[10px] font-extrabold tracking-wider font-mono text-white/80 flex items-center gap-1">
+            <IconComponent className="w-3 h-3 text-sentinel-accent flex-shrink-0" />
+            <span className="truncate">{theme.label}</span>
+          </span>
         </div>
-      </div>
-
-      {/* Central Watermark Icon */}
-      <div className="absolute -right-3 -bottom-3 opacity-20 pointer-events-none">
-        <IconComponent className="w-24 h-24 text-white stroke-[1.2]" />
-      </div>
-
-      {/* Bottom Information */}
-      <div className="relative z-10">
-        <span className="text-[10px] font-extrabold tracking-wider font-mono text-white/80 flex items-center gap-1">
-          <IconComponent className="w-3 h-3 text-sentinel-accent flex-shrink-0" />
-          <span className="truncate">{theme.label}</span>
-        </span>
-      </div>
+      )}
     </div>
   );
 }

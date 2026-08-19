@@ -73,24 +73,27 @@ export function OpportunityCard({
 
       {/* Pricing & Eligibility Badges */}
       <div className="space-y-2 pt-2 border-t border-sentinel-border/60">
-        <div className="flex items-center justify-between text-xs">
-          <div className="space-y-0.5">
-            <span className="text-[10px] text-sentinel-muted uppercase block">Value</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-extrabold text-sm text-sentinel-accent">
+        <div className="grid grid-cols-2 gap-2 items-start text-xs">
+          <div className="min-w-0 space-y-0.5">
+            <span className="text-[10px] text-sentinel-muted uppercase font-semibold block">Value</span>
+            <div className="flex items-baseline gap-1 flex-wrap">
+              <span className="font-extrabold text-sm text-sentinel-accent truncate">
                 {opp.current_value}
               </span>
-              {opp.normal_value && (
-                <span className="text-[11px] text-sentinel-muted line-through font-medium">
+              {opp.normal_value && opp.normal_value.toLowerCase().trim() !== opp.current_value.toLowerCase().trim() && (
+                <span className="text-[10px] text-sentinel-muted line-through font-medium truncate">
                   {opp.normal_value}
                 </span>
               )}
             </div>
           </div>
 
-          <div className="text-right space-y-0.5">
-            <span className="text-[10px] text-sentinel-muted uppercase block">Eligibility</span>
-            <span className="text-[11px] font-semibold text-sentinel-text bg-sentinel-border/50 px-2 py-0.5 rounded-md">
+          <div className="min-w-0 text-right space-y-0.5">
+            <span className="text-[10px] text-sentinel-muted uppercase font-semibold block">Eligibility</span>
+            <span 
+              className="text-[10px] sm:text-[11px] font-semibold text-sentinel-text bg-sentinel-border/50 px-2 py-0.5 rounded-md inline-block max-w-full truncate"
+              title={opp.eligibility}
+            >
               {opp.eligibility}
             </span>
           </div>

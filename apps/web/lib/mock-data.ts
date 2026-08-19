@@ -342,6 +342,6 @@ export const INITIAL_AGENT_STATS: AgentStats = {
   last_scan_time: '4 mins ago',
   sources_checked: 128,
   new_opportunities_today: 6,
-  next_report_time: '9:00 PM',
+  next_report_time: '8:00 AM IST',
   system_cost: '₹0.00'
 };

@@ -85,7 +85,7 @@ export const dbClient = {
       last_scan_time: 'Just now',
       sources_checked: 9,
       new_opportunities_today: activeOpps,
-      next_report_time: '9:00 PM IST',
+      next_report_time: '8:00 AM IST',
       system_cost: '₹0.00'
     };
   },

@@ -93,7 +93,7 @@ function NewsFeedContent() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <Header userName="Balaji" />
+      <Header />
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Page Header */}
@@ -177,7 +177,7 @@ export default function NewsPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex flex-col min-w-0">
-        <Header userName="Balaji" />
+        <Header />
         <div className="flex-1 flex items-center justify-center min-h-[60vh]">
           <Loader2 className="w-8 h-8 text-sentinel-accent animate-spin" />
         </div>

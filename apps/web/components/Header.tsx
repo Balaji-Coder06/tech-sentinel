@@ -4,13 +4,16 @@ import React, { useState } from 'react';
 import { Search, Bell, Moon, Sun, Sparkles } from 'lucide-react';
 import { SearchModal } from './SearchModal';
 
-interface HeaderProps {
-  userName?: string;
-}
-
-export function Header({ userName = 'Balaji' }: HeaderProps) {
+export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const toggleTheme = () => {
     const root = document.documentElement;
@@ -26,10 +29,10 @@ export function Header({ userName = 'Balaji' }: HeaderProps) {
   return (
     <>
       <header className="sticky top-0 z-30 glass-panel border-b border-sentinel-border px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
-        {/* Personalized Greeting */}
+        {/* Dynamic Greeting */}
         <div>
           <h1 className="text-base sm:text-lg font-bold tracking-tight text-sentinel-text flex items-center gap-1.5">
-            Good morning, {userName} <span className="animate-bounce">👋</span>
+            {getGreeting()} <span className="animate-bounce">👋</span>
           </h1>
           <p className="text-xs text-sentinel-muted hidden sm:block">
             Here is what you missed in tech & what you can claim today.

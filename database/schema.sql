@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS system_status (
     last_scan_time TEXT DEFAULT (datetime('now')),
     sources_checked INTEGER DEFAULT 9,
     new_opportunities_today INTEGER DEFAULT 0,
-    next_report_time TEXT DEFAULT '9:00 PM IST',
+    next_report_time TEXT DEFAULT '8:00 AM IST',
     last_run_duration_sec REAL DEFAULT 0.0,
     last_error TEXT,
     updated_at TEXT DEFAULT (datetime('now'))

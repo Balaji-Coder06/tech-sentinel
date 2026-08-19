@@ -317,7 +317,9 @@ export default {
                 importance_score=excluded.importance_score,
                 relevance_score=excluded.relevance_score,
                 is_featured=excluded.is_featured,
-                is_trending=excluded.is_trending
+                is_trending=excluded.is_trending,
+                published_at=excluded.published_at,
+                discovered_at=excluded.discovered_at
             `).bind(
               item.id, item.title, item.description, item.content || '', item.url,
               item.canonical_url || null, item.image_url || null, validSourceId,
@@ -355,7 +357,8 @@ export default {
                 verification_notes=excluded.verification_notes,
                 importance_score=excluded.importance_score,
                 priority=excluded.priority,
-                why_care=excluded.why_care
+                why_care=excluded.why_care,
+                discovered_at=excluded.discovered_at
             `).bind(
               opp.id, opp.title, opp.provider, opp.provider_logo || null, opp.description,
               opp.opportunity_type, opp.category, opp.normal_value || null, opp.current_value || 'FREE',
@@ -408,7 +411,7 @@ export default {
               INSERT INTO system_status (
                 id, status, last_scan_time, sources_checked, new_opportunities_today,
                 next_report_time, last_run_duration_sec, last_error, updated_at
-              ) VALUES ('current', 'ACTIVE', ?, ?, ?, '9:00 PM IST', ?, ?, datetime('now'))
+              ) VALUES ('current', 'ACTIVE', ?, ?, ?, '8:00 AM IST', ?, ?, datetime('now'))
               ON CONFLICT(id) DO UPDATE SET
                 status='ACTIVE',
                 last_scan_time=excluded.last_scan_time,
@@ -1192,7 +1195,7 @@ export default {
             last_scan_time: currentStatus.last_scan_time || new Date().toISOString(),
             sources_checked: currentStatus.sources_checked || totalSources,
             new_opportunities_today: activeOppsCount,
-            next_report_time: currentStatus.next_report_time || '9:00 PM IST',
+            next_report_time: currentStatus.next_report_time || '8:00 AM IST',
             system_cost: '₹0.00'
           }
         }), { headers });

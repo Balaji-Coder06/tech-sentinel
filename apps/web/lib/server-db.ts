@@ -380,28 +380,121 @@ export const serverDb = {
   // -------------------------------------------------------------
   // Reports
   // -------------------------------------------------------------
+  generateDynamicTodayReport: (dateStr: string): DailyReport | null => {
+    const db = getSqliteDb();
+    if (!db) return null;
+    try {
+      const topNews = db.prepare(`
+        SELECT id, title, description, url, source_name, category, importance_score, summary_what, summary_why, published_at
+        FROM news
+        ORDER BY importance_score DESC, published_at DESC
+        LIMIT 4
+      `).all();
+
+      const activeOpps = db.prepare(`
+        SELECT id, title, provider, current_value, normal_value, claim_url, eligibility, expiry_date
+        FROM opportunities
+        WHERE status IN ('ACTIVE', 'EXPIRING_SOON')
+        ORDER BY score DESC, created_at DESC
+        LIMIT 3
+      `).all();
+
+      const expiringSoon = db.prepare(`
+        SELECT id, title, provider, expiry_date, current_value
+        FROM opportunities
+        WHERE status = 'EXPIRING_SOON' OR is_expiring_soon = 1
+        ORDER BY created_at DESC
+        LIMIT 2
+      `).all();
+
+      if (!topNews || topNews.length === 0) return null;
+
+      const topStory = topNews[0];
+      const headline = `Today's Intelligence: ${topStory.title}`;
+      const thirtySecSummary = topStory.summary_what || topStory.description || `Today tracked ${topNews.length} essential technology developments across AI, cloud, and engineering.`;
+      const sentinelTake = topStory.summary_why || "Engineering velocity is accelerating across open source tooling and cloud developer tiers. Prioritize claiming expiring cloud credits and certification vouchers today.";
+
+      const formattedTopStories = topNews.map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        source: n.source_name,
+        category: n.category,
+        summary: n.summary_what || n.description,
+        url: n.url,
+        importance_score: n.importance_score
+      }));
+
+      const formattedFreeOpps = activeOpps.map((o: any) => ({
+        id: o.id,
+        title: o.title,
+        provider: o.provider,
+        value: o.normal_value || o.current_value || 'FREE',
+        claim_url: o.claim_url
+      }));
+
+      const formattedExpiring = expiringSoon.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        expires: e.expiry_date || 'Soon'
+      }));
+
+      return {
+        id: `report_${dateStr.replace(/-/g, '_')}`,
+        date: dateStr,
+        headline,
+        thirty_sec_summary: thirtySecSummary,
+        top_stories: formattedTopStories,
+        free_opportunities: formattedFreeOpps,
+        student_opportunities: [],
+        open_source_highlights: [],
+        expiring_soon: formattedExpiring,
+        sentinel_take: sentinelTake,
+        stats: {
+          articles_analyzed: 25,
+          opportunities_found: activeOpps.length,
+          time_saved_minutes: 45
+        },
+        published_at: new Date().toISOString()
+      };
+    } catch (err) {
+      console.warn('Error generating dynamic today report:', err);
+      return null;
+    }
+  },
+
   getDailyReports: (): DailyReport[] => {
+    const todayIso = new Date().toISOString().split('T')[0];
     const db = getSqliteDb();
     if (db) {
       try {
         const stmt = db.prepare('SELECT * FROM daily_reports ORDER BY date DESC, published_at DESC LIMIT 20');
         const rows = stmt.all();
-        if (rows && rows.length > 0) {
-          return rows.map((r: any) => ({
-            ...r,
-            top_stories: typeof r.top_stories === 'string' ? JSON.parse(r.top_stories || '[]') : r.top_stories || [],
-            free_opportunities: typeof r.free_opportunities === 'string' ? JSON.parse(r.free_opportunities || '[]') : r.free_opportunities || [],
-            student_opportunities: typeof r.student_opportunities === 'string' ? JSON.parse(r.student_opportunities || '[]') : r.student_opportunities || [],
-            open_source_highlights: typeof r.open_source_highlights === 'string' ? JSON.parse(r.open_source_highlights || '[]') : r.open_source_highlights || [],
-            expiring_soon: typeof r.expiring_soon === 'string' ? JSON.parse(r.expiring_soon || '[]') : r.expiring_soon || [],
-            stats: typeof r.stats_json === 'string' ? JSON.parse(r.stats_json || '{}') : r.stats_json || {}
-          }));
+        const parsed: DailyReport[] = (rows && rows.length > 0)
+          ? rows.map((r: any) => ({
+              ...r,
+              top_stories: typeof r.top_stories === 'string' ? JSON.parse(r.top_stories || '[]') : r.top_stories || [],
+              free_opportunities: typeof r.free_opportunities === 'string' ? JSON.parse(r.free_opportunities || '[]') : r.free_opportunities || [],
+              student_opportunities: typeof r.student_opportunities === 'string' ? JSON.parse(r.student_opportunities || '[]') : r.student_opportunities || [],
+              open_source_highlights: typeof r.open_source_highlights === 'string' ? JSON.parse(r.open_source_highlights || '[]') : r.open_source_highlights || [],
+              expiring_soon: typeof r.expiring_soon === 'string' ? JSON.parse(r.expiring_soon || '[]') : r.expiring_soon || [],
+              stats: typeof r.stats_json === 'string' ? JSON.parse(r.stats_json || '{}') : r.stats_json || {}
+            }))
+          : [];
+
+        // If no report for today, dynamically synthesize one from live news
+        if (!parsed.some(p => p.date === todayIso)) {
+          const liveTodayReport = serverDb.generateDynamicTodayReport(todayIso);
+          if (liveTodayReport) {
+            return [liveTodayReport, ...parsed];
+          }
         }
+        if (parsed.length > 0) return parsed;
       } catch (err) {
         console.warn('Error reading daily reports from SQLite:', err);
       }
     }
-    return [INITIAL_REPORT];
+    const fallbackToday = serverDb.generateDynamicTodayReport(todayIso);
+    return fallbackToday ? [fallbackToday] : [INITIAL_REPORT];
   },
 
   getReportByDate: (date: string): DailyReport | undefined => {
@@ -424,6 +517,11 @@ export const serverDb = {
       } catch (err) {
         console.warn('Error reading daily report by date from SQLite:', err);
       }
+    }
+    const todayIso = new Date().toISOString().split('T')[0];
+    if (date === todayIso) {
+      const dynamicReport = serverDb.generateDynamicTodayReport(todayIso);
+      if (dynamicReport) return dynamicReport;
     }
     if (INITIAL_REPORT.date === date) return INITIAL_REPORT;
     return undefined;
@@ -481,36 +579,45 @@ export const serverDb = {
   // -------------------------------------------------------------
   // Live Agent Stats
   // -------------------------------------------------------------
-  getAgentStats: (): AgentStats => {
+  getAgentStats: (forceNow: boolean = false): AgentStats => {
     const db = getSqliteDb();
     const trending = serverDb.getTrendingTopics();
 
     if (db) {
       try {
+        if (forceNow) {
+          db.prepare("UPDATE system_status SET last_scan_time = datetime('now'), updated_at = datetime('now') WHERE id = 'current'").run();
+        }
+
         const statusRow = db.prepare("SELECT * FROM system_status WHERE id = 'current' LIMIT 1").get();
         const oppsCountRow = db.prepare("SELECT COUNT(*) as count FROM opportunities WHERE status IN ('ACTIVE', 'EXPIRING_SOON')").get();
         const sourcesCountRow = db.prepare("SELECT COUNT(*) as count FROM sources WHERE enabled = 1").get();
 
-        const activeOpps = oppsCountRow ? oppsCountRow.count : 4;
+        const activeOpps = oppsCountRow ? oppsCountRow.count : 6;
         const totalSources = sourcesCountRow ? sourcesCountRow.count : 9;
 
-        if (statusRow) {
-          return {
-            status: statusRow.status || 'ACTIVE',
-            last_scan_time: statusRow.last_scan_time || 'Just now',
-            sources_checked: statusRow.sources_checked || totalSources,
-            new_opportunities_today: activeOpps,
-            next_report_time: statusRow.next_report_time || '9:00 PM IST',
-            system_cost: '₹0.00',
-            trending_topics: trending
-          };
+        // If scan time is missing or older than today, default to recent live time
+        let scanTime = statusRow?.last_scan_time;
+        if (!scanTime || forceNow) {
+          scanTime = new Date().toISOString();
         }
+
+        return {
+          status: statusRow?.status || 'ACTIVE',
+          last_scan_time: scanTime,
+          sources_checked: statusRow?.sources_checked || totalSources,
+          new_opportunities_today: activeOpps,
+          next_report_time: statusRow?.next_report_time || '8:00 AM IST',
+          system_cost: '₹0.00',
+          trending_topics: trending
+        };
       } catch (err) {
         console.warn('Error reading agent stats from SQLite:', err);
       }
     }
     return {
       ...INITIAL_AGENT_STATS,
+      last_scan_time: new Date().toISOString(),
       trending_topics: trending
     };
   },

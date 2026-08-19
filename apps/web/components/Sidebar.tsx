@@ -110,18 +110,15 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Sentinel Active Status Card */}
-      <div className="p-3.5 rounded-2xl border border-sentinel-border bg-sentinel-card shadow-subtle space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-sentinel-success radar-active" />
-            <span className="text-xs font-semibold text-sentinel-text">Sentinel Active</span>
-          </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sentinel-border/60 text-sentinel-muted font-medium">₹0 Cost</span>
+      {/* Sentinel Active Status Badge */}
+      <div className="px-3.5 py-2.5 rounded-2xl border border-sentinel-border bg-sentinel-card shadow-subtle flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span className="text-xs font-bold text-sentinel-text">Sentinel Active</span>
         </div>
-        <p className="text-[11px] text-sentinel-muted leading-snug">
-          Autonomous intelligence engine monitoring active developer sources continuously.
-        </p>
       </div>
     </aside>
   );
