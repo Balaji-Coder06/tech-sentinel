@@ -1,7 +1,9 @@
+import os
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 
+from ..config import settings
 from ..models import DailyReport
 from ..storage.db import Database
 from ..storage.d1_sync import D1SyncClient
